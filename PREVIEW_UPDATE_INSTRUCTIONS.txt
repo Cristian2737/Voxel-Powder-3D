@@ -1,0 +1,23 @@
+VOXEL POWDER 3D — DROP-IN UPDATE v0.4
+=====================================
+
+Filename stays Voxel_Powder_3D_Update.zip for every update.
+
+1. Extract this ZIP into your existing Voxel Powder 3D folder.
+2. Replace existing files when Windows asks.
+3. Run RUN_STANDALONE.bat (Java 8 or newer).
+
+NEW — ELECTRONICS
+- Press E to toggle standard / electronics hotbars.
+- Press number keys 1–9 to select tools/materials.
+- SPRK is a non-destructive tool: right-click the targeted conductor.
+- BTRY automatically pulses neighboring conductors.
+- PSCN enables SWCH and carries power toward NSCN; NSCN turns switches off.
+- INST carries a charge instantly across a connected 3D line.
+- INWR limits conductive connections.
+- LCRY illuminates when charged.
+- The demo world's north side has two electronic circuit examples.
+- P pauses the simulation if you need to build a circuit without it running.
+
+Forge is source-only until compilation in a Forge development environment.
+The full ZIP includes Forge electronics blocks and a separate SPRK injector item.

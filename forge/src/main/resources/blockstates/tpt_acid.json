@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "tpt3d:block/tpt_acid"
+    },
+    "powered=true": {
+      "model": "tpt3d:block/tpt_acid"
+    }
+  }
+}

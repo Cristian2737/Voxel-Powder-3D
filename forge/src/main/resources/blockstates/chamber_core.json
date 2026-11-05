@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "tpt3d:block/chamber_core"
+    }
+  }
+}

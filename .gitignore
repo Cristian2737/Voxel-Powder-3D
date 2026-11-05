@@ -1,0 +1,9 @@
+# Build artifacts; keep the checked-in Java 8 preview JAR.
+.gradle/
+**/build/
+*.class
+*.log
+*.tmp
+.idea/
+.vscode/
+.DS_Store

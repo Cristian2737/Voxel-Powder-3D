@@ -1,0 +1,40 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+version = '0.4.0'
+group = 'com.cristian.voxelpowder'
+base { archivesName = 'voxelpowder3d-forge-1.20.1' }
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'info'
+            mods { tpt3d { source sourceSets.main } }
+        }
+        server {
+            workingDirectory project.file('run-server')
+            property 'forge.logging.console.level', 'info'
+            mods { tpt3d { source sourceSets.main } }
+        }
+    }
+}
+
+sourceSets.main.java.srcDir('../core/src/main/java')
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.28'
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+// Stable output filename so new Forge builds can replace earlier ones directly.
+tasks.named('jar') { archiveFileName.set('VoxelPowder3D_Forge.jar') }
