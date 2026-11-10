@@ -58,6 +58,8 @@ def install(root: Path) -> None:
     public static final BooleanSetting PROFANITY_DEFAULT_WORDS = new BooleanSetting("morphe_profanity_default_words", TRUE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_REVERENT_PHRASES = new BooleanSetting("morphe_profanity_reverent_phrases", TRUE, parent(PROFANITY_FILTER));
     public static final StringSetting PROFANITY_CUSTOM_WORDS = new StringSetting("morphe_profanity_custom_words", "", parent(PROFANITY_FILTER));
+    public static final BooleanSetting PROFANITY_DIAGNOSTICS = new BooleanSetting("morphe_profanity_diagnostics", FALSE, parent(PROFANITY_FILTER));
+    public static final BooleanSetting PROFANITY_TEST_AUDIO = new BooleanSetting("morphe_profanity_test_audio", FALSE, parent(PROFANITY_FILTER));
     public static final BooleanSetting STABLE_CAPTION_BLOCKS = new BooleanSetting("morphe_stable_caption_blocks", FALSE, true,''')
 
     # This existing patched parser is installed without requiring the native
@@ -151,6 +153,10 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_reverent_phrases_summary">Include oh my God and Jesus Christ</string>
     <string name="morphe_profanity_custom_words_title">Custom words / exclusions</string>
     <string name="morphe_profanity_custom_words_summary">Comma-separated phrases; prefix - to exclude a default term</string>
+    <string name="morphe_profanity_diagnostics_title">Show filter diagnostics</string>
+    <string name="morphe_profanity_diagnostics_summary">Show the number of detected mute intervals when captions load</string>
+    <string name="morphe_profanity_test_audio_title">Test audio muting (first 5 seconds)</string>
+    <string name="morphe_profanity_test_audio_summary">Temporarily silence the first five seconds of each video to test audio controls; turn off afterward</string>
 </resources>''')
 
     # Give the custom bundle its own visible source name. This is a Morphe-derived
