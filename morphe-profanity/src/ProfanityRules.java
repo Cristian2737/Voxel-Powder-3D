@@ -1,65 +1,117 @@
 /*
- * GPL-3.0-or-later: optional Morphe YouTube profanity filter.
- * Word and phrase matching is deliberately plain Java so it can be unit-tested.
+ * GPL-3.0-or-later. Word and phrase detection for the optional Morphe filter.
+ * This is an independent Java implementation of caption-based filtering.
  */
 package app.morphe.extension.youtube.patches;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 final class ProfanityRules {
-    private static final List<String> DEFAULT_WORDS = Arrays.asList(
-            "fuck", "fucks", "fucked", "fucking", "fucker", "motherfucker", "motherfucking",
-            "shit", "shitty", "bullshit", "bitch", "bitches", "bastard", "bastards",
-            "asshole", "assholes", "dick", "dicks", "cock", "cocks", "cunt", "cunts",
-            "pussy", "pussies", "slut", "sluts", "whore", "whores", "piss", "pissed",
-            "damn", "damned", "goddamn", "goddamned", "crap"
-    );
-    private static final List<String> REVERENT_WORDS = Arrays.asList(
-            "oh my god", "oh my gosh", "jesus christ", "god damn", "god dammit",
-            "jesus freaking christ", "holy shit"
-    );
+    // YouTube's own sanitized transcript marker must be caught even if every
+    // editable word list is empty. It is not actual spoken text.
+    private static final String ALWAYS_MUTED = "\\[\\s*_{2,}\\s*\\]";
+    private static final String BOUNDARY_LEFT = "(?<![\\p{L}\\p{N}])";
+    private static final String BOUNDARY_RIGHT = "(?![\\p{L}\\p{N}])";
 
     private ProfanityRules() {}
 
-    /** Comma, semicolon, or newline separated phrases. Prefix a phrase with '-' to exclude it. */
-    static Pattern compile(boolean useDefaults, boolean reverent, String custom) {
-        Set<String> terms = new LinkedHashSet<>();
-        if (useDefaults) terms.addAll(DEFAULT_WORDS);
-        if (reverent) terms.addAll(REVERENT_WORDS);
-        List<String> removals = new ArrayList<>();
+    private static Map<String, String> defaultExpressions(boolean language, boolean reverent) {
+        Map<String, String> words = new LinkedHashMap<>();
+        if (language) {
+            words.put("fuck", "fuck\\p{L}*");
+            words.put("motherfucker", "motherfuck\\p{L}*");
+            words.put("shit", "shit\\p{L}*");
+            words.put("bitch", "bitch\\p{L}*");
+            words.put("whore", "whor\\p{L}*");
+            words.put("piss", "piss\\p{L}*");
+            words.put("damn", "\\p{L}*damn\\p{L}*");
+            for (String term : Arrays.asList(
+                    "hell", "crap", "ass", "asshole", "bastard", "dick",
+                    "cock", "pussy", "slut", "cunt", "bullshit")) {
+                words.put(term, Pattern.quote(term));
+            }
+        }
+        if (reverent) {
+            words.put("jesus", Pattern.quote("Jesus"));
+            words.put("christ", Pattern.quote("Christ"));
+            words.put("god", Pattern.quote("God"));
+            words.put("jesus christ", "Jesus\\s+(?:\\p{L}+\\s+)?Christ");
+            words.put("oh my god", "oh\\s+my\\s+(?:\\p{L}+\\s+)?God");
+        }
+        return words;
+    }
+
+    private static String literalPattern(String term) {
+        StringBuilder result = new StringBuilder();
+        for (String part : term.trim().split("\\s+")) {
+            if (part.isBlank()) continue;
+            if (result.length() > 0) result.append("\\s+");
+            result.append(Pattern.quote(part));
+        }
+        return result.toString();
+    }
+
+    // Kept for older test fixtures and callers.
+    static Pattern compile(boolean defaults, boolean reverent, String custom) {
+        return compile(defaults, reverent, custom, "", true);
+    }
+
+    /** Custom words are literal; customRegex is an advanced opt-in regex list. */
+    static Pattern compile(boolean defaults, boolean reverent, String custom,
+                           String customRegex, boolean boundaries) {
+        Map<String, String> terms = defaultExpressions(defaults, reverent);
+        Set<String> exclusions = new LinkedHashSet<>();
         if (custom != null) {
             for (String raw : custom.split("[,;\\r\\n]+")) {
-                String value = raw.strip().toLowerCase(java.util.Locale.ROOT);
+                String value = raw.strip().toLowerCase(Locale.ROOT);
                 if (value.isEmpty() || value.length() > 100) continue;
                 if (value.startsWith("-")) {
-                    if (!value.substring(1).strip().isEmpty()) removals.add(value.substring(1).strip());
+                    String removed = value.substring(1).strip();
+                    if (!removed.isEmpty()) exclusions.add(removed);
                 } else {
-                    terms.add(value);
+                    terms.put(value, literalPattern(value));
                 }
             }
         }
-        terms.removeAll(removals);
-        List<String> parts = new ArrayList<>();
-        for (String term : terms) {
-            String[] words = term.split("\\s+");
-            StringBuilder phrase = new StringBuilder();
-            for (String word : words) {
-                if (word.isEmpty()) continue;
-                if (phrase.length() != 0) phrase.append("\\s+");
-                phrase.append(Pattern.quote(word));
-            }
-            if (phrase.length() != 0) parts.add(phrase.toString());
+        for (String term : exclusions) terms.remove(term);
+
+        List<String> expressions = new ArrayList<>();
+        expressions.add(ALWAYS_MUTED);
+        for (String expression : terms.values()) {
+            if (expression.isBlank()) continue;
+            String pattern = boundaries
+                    ? BOUNDARY_LEFT + "(?:" + expression + ")" + BOUNDARY_RIGHT
+                    : "(?:" + expression + ")";
+            expressions.add(pattern);
         }
-        if (parts.isEmpty()) return Pattern.compile("(?!)");
-        parts.sort((a,b) -> Integer.compare(b.length(), a.length()));
-        return Pattern.compile("(?iu)(?<![\\p{L}\\p{N}])(?:" + String.join("|", parts)
-                + ")(?![\\p{L}\\p{N}])");
+
+        if (customRegex != null && !customRegex.isBlank()) {
+            int count = 0;
+            for (String raw : customRegex.split("[;\\r\\n]+")) {
+                if (++count > 50) break;
+                String term = raw.trim();
+                if (term.length() < 1 || term.length() > 200) continue;
+                try {
+                    Pattern.compile(term, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+                    expressions.add("(?:" + term + ")");
+                } catch (PatternSyntaxException ignored) {
+                    // Ignore only the invalid entry instead of disabling everything.
+                }
+            }
+        }
+        // Longest candidates first for better overlap handling.
+        expressions.sort((left, right) -> Integer.compare(right.length(), left.length()));
+        return Pattern.compile("(?iu)(?:" + String.join("|", expressions) + ")");
     }
 
     static boolean contains(String text, Pattern pattern) {
@@ -73,14 +125,15 @@ final class ProfanityRules {
         StringBuilder output = new StringBuilder(text.length());
         int from = 0;
         do {
+            if (matcher.start() == matcher.end()) continue;
             output.append(text, from, matcher.start());
-            String match = matcher.group();
-            for (int i = 0; i < match.length(); i++) {
-                char ch = match.charAt(i);
-                output.append(Character.isLetterOrDigit(ch) ? '*' : ch);
+            for (char ch : matcher.group().toCharArray()) {
+                output.append(Character.isLetterOrDigit(ch) || ch == '_'
+                        ? '*' : ch);
             }
             from = matcher.end();
         } while (matcher.find());
-        return output.append(text, from, text.length()).toString();
+        output.append(text, from, text.length());
+        return output.toString();
     }
 }
