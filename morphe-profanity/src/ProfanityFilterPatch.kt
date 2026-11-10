@@ -40,6 +40,8 @@ val profanityFilterPatch = patch(
                     SwitchPreference("morphe_profanity_default_words", summary = true),
                     SwitchPreference("morphe_profanity_reverent_phrases", summary = true),
                     TextPreference("morphe_profanity_custom_words"),
+                    SwitchPreference("morphe_profanity_diagnostics", summary = true),
+                    SwitchPreference("morphe_profanity_test_audio", summary = true),
                 ),
             ),
         )
