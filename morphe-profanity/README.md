@@ -82,3 +82,35 @@ usable captions. The test and diagnostic switches are **off by default**.
 
 This is source-only troubleshooting progress: full compilation and on-device
 behavior still require a successful GitHub Actions build and a device test.
+
+## v0.4 — closer to ContentAngel 1.5.1
+
+The next successful artifact keeps the filename **morphe-profanity-filter.mpp**.
+The in-app filter summary should read **Prototype v0.4**, allowing it to be
+identified separately from earlier builds. **Compiled output/device behavior are
+not yet verified.**
+
+The Java implementation now understands YouTube's always-muted `[ __ ]` marker,
+uses default word families closer to ContentAngel's, joins adjacent captions
+for multi-word phrases, estimates missing word timing and offers controls for
+regex, word boundaries, mute lead/fallback duration, censor style and per-channel
+Always/Never lists. The new per-video timeline cache prevents a background
+caption request from replacing the video playing on screen.
+
+It also runs JVM tests for word detection and timing before the Gradle build.
+The test requires no Android dependencies, but it does not prove the native
+YouTube player will behave correctly on all videos.
+
+For the **exact feature parity status and Android-only limitations**, see
+[CONTENTANGEL_PARITY.md](CONTENTANGEL_PARITY.md).
+
+### How to test
+
+Enable the filter and **Show filter diagnostics**; leave the five-second
+**Test audio muting** switch off for normal use. Play a video that contains
+actual English profanity and enable its English caption track. The new toast
+reports **matches / merged mute windows / captions / segments**, not just the
+window count. Matches of zero indicate the caption text did not match; matches
+with nonzero windows but no audio suppression suggest a timing or playback-hook
+problem. For a quick comparison, the audio self-test still mutes the first five
+seconds of a video independently of captions.
