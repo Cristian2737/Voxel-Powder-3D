@@ -32,8 +32,6 @@ import app.morphe.extension.youtube.shared.VideoState;
 public final class ProfanityFilterPatch {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final long TICK_MS = 35;
-    private static final int MAX_PARAGRAPHS = 30000;
-    private static final int MAX_SEGMENTS = 100000;
     private static final Pattern XML_TEXT = Pattern.compile(">([^<>]+)<", Pattern.DOTALL);
     private static volatile String currentVideo = "";
     private static volatile TrackStamp selectedTrack;
@@ -49,22 +47,61 @@ public final class ProfanityFilterPatch {
 
     private record TrackStamp(String video, String vss, String language) {}
     private record Window(long start, long end) {}
-    private record Piece(int startCharacter, int endCharacter, long startTime, long endTime) {}
 
     private ProfanityFilterPatch() {}
 
+    /**
+     * Channel overrides use exact channel IDs or names, one per line or comma.
+     * Never-censor wins over always-censor when both lists contain a channel.
+     */
+    private static boolean containsChannel(String entries) {
+        if (entries == null || entries.isBlank()) return false;
+        String id = VideoInformation.getChannelId();
+        String name = VideoInformation.getChannelName();
+        for (String raw : entries.split("[,;\\r\\n]+")) {
+            String entry = raw.strip();
+            if (entry.isEmpty()) continue;
+            if (id != null && entry.equalsIgnoreCase(id)) return true;
+            if (name != null && entry.equalsIgnoreCase(name)) return true;
+        }
+        return false;
+    }
+
     public static boolean isEnabled() {
-        return Settings.PROFANITY_FILTER.get();
+        if (containsChannel(Settings.PROFANITY_NEVER_CHANNELS.get())) return false;
+        return Settings.PROFANITY_FILTER.get()
+                || containsChannel(Settings.PROFANITY_ALWAYS_CHANNELS.get());
+    }
+
+    private static long muteBufferMs() {
+        try {
+            return Math.max(0, Math.min(500,
+                    Long.parseLong(Settings.PROFANITY_MUTE_BUFFER.get().strip())));
+        } catch (RuntimeException ignored) {
+            return 150;
+        }
+    }
+
+    private static long muteDurationMs() {
+        try {
+            return Math.max(100, Math.min(5000,
+                    Long.parseLong(Settings.PROFANITY_MUTE_DURATION.get().strip())));
+        } catch (RuntimeException ignored) {
+            return 1500;
+        }
     }
 
     private static synchronized Pattern rules() {
         String key = Settings.PROFANITY_DEFAULT_WORDS.get() + "|"
                 + Settings.PROFANITY_REVERENT_PHRASES.get() + "|"
-                + Settings.PROFANITY_CUSTOM_WORDS.get();
+                + Settings.PROFANITY_CUSTOM_WORDS.get() + "|"
+                + Settings.PROFANITY_CUSTOM_REGEX.get() + "|"
+                + Settings.PROFANITY_WORD_BOUNDARY.get();
         if (cachedRules == null || !key.equals(cachedRulesKey)) {
             cachedRulesKey = key;
             cachedRules = ProfanityRules.compile(Settings.PROFANITY_DEFAULT_WORDS.get(),
-                    Settings.PROFANITY_REVERENT_PHRASES.get(), Settings.PROFANITY_CUSTOM_WORDS.get());
+                    Settings.PROFANITY_REVERENT_PHRASES.get(), Settings.PROFANITY_CUSTOM_WORDS.get(),
+                    Settings.PROFANITY_CUSTOM_REGEX.get(), Settings.PROFANITY_WORD_BOUNDARY.get());
         }
         return cachedRules;
     }
@@ -134,105 +171,36 @@ public final class ProfanityFilterPatch {
         parsedTrack.remove();
         if (!isEnabled() || stamp == null || document == null) return;
         try {
-            List<Window> extracted = parseWindows(document, rules());
+            ProfanitySchedule.Scan scanned = ProfanitySchedule.scan(
+                    document, rules(), muteBufferMs(), muteDurationMs());
+            List<Window> extracted = new ArrayList<>();
+            for (ProfanitySchedule.Window w : scanned.windows()) {
+                extracted.add(new Window(w.start(), w.end()));
+            }
+            extracted = Collections.unmodifiableList(extracted);
+            final List<Window> compiledWindows = extracted;
             Utils.runOnMainThreadNowOrLater(() -> {
                 if (!isEnabled()) return;
                 // Original and translated tracks sometimes have different VSS IDs.
                 // Filter the currently playing video by ID instead of requiring exact
                 // caption-track object equality, which discarded real captions.
                 latestCaptionTrack = stamp;
-                latestCaptionWindows = extracted;
+                latestCaptionWindows = compiledWindows;
                 boolean playingVideo = stamp.video().equals(currentVideo)
                         || stamp.video().equals(VideoInformation.getVideoId());
                 if (!playingVideo) return;
-                windows = extracted;
+                windows = compiledWindows;
                 updateMute();
                 schedule();
                 if (Settings.PROFANITY_DIAGNOSTICS.get()) {
-                    Utils.showToastShort("Profanity filter: " + extracted.size()
-                            + " mute intervals found");
+                    Utils.showToastShort("Profanity filter: " + scanned.matchCount()
+                            + " words/phrases, " + scanned.windows().size()
+                            + " mute windows in " + scanned.captionCount() + " captions");
                 }
             });
         } catch (RuntimeException error) {
             Logger.printException(() -> "Profanity caption timing failed", error);
         }
-    }
-
-    private static long millis(String raw, long fallback) {
-        if (raw == null || raw.isEmpty()) return fallback;
-        try {
-            return Long.parseLong(raw);
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
-
-    /** Build word-level intervals when available, otherwise use the containing paragraph. */
-    private static List<Window> parseWindows(Document doc, Pattern pattern) {
-        NodeList paragraphs = doc.getElementsByTagName("p");
-        if (paragraphs.getLength() > MAX_PARAGRAPHS) return Collections.emptyList();
-        ArrayList<Window> found = new ArrayList<>();
-        int segmentsSeen = 0;
-        for (int p = 0; p < paragraphs.getLength(); p++) {
-            if (!(paragraphs.item(p) instanceof Element element)) continue;
-            long from = millis(element.getAttribute("t"), -1);
-            long duration = millis(element.getAttribute("d"), -1);
-            if (from < 0 || duration <= 0 || duration > 600000 || from > Long.MAX_VALUE - duration)
-                continue;
-            long end = from + duration;
-            NodeList segments = element.getElementsByTagName("s");
-            segmentsSeen += segments.getLength();
-            if (segmentsSeen > MAX_SEGMENTS) return Collections.emptyList();
-
-            if (segments.getLength() == 0) {
-                if (ProfanityRules.contains(element.getTextContent(), pattern))
-                    found.add(new Window(Math.max(0, from - 150), end + 180));
-                continue;
-            }
-
-            StringBuilder full = new StringBuilder();
-            ArrayList<Piece> pieces = new ArrayList<>();
-            for (int i = 0; i < segments.getLength(); i++) {
-                Element segment = (Element) segments.item(i);
-                long offset = millis(segment.getAttribute("t"), 0);
-                if (offset < 0 || offset >= duration) continue;
-                long nextOffset = duration;
-                if (i + 1 < segments.getLength()) {
-                    nextOffset = millis(((Element) segments.item(i + 1)).getAttribute("t"), duration);
-                }
-                long segmentEnd = from + Math.max(offset + 1, Math.min(duration, nextOffset));
-                String text = segment.getTextContent();
-                int characterStart = full.length();
-                full.append(text);
-                pieces.add(new Piece(characterStart, full.length(), from + offset, segmentEnd));
-            }
-            Matcher matches = pattern.matcher(full);
-            while (matches.find()) {
-                long first = Long.MAX_VALUE, last = -1;
-                for (Piece piece : pieces) {
-                    if (piece.endCharacter() <= matches.start()
-                            || piece.startCharacter() >= matches.end()) continue;
-                    first = Math.min(first, piece.startTime());
-                    last = Math.max(last, piece.endTime());
-                }
-                if (last > first) found.add(new Window(Math.max(0, first - 150), last + 180));
-            }
-        }
-        if (found.isEmpty()) return Collections.emptyList();
-        found.sort(Comparator.comparingLong(Window::start));
-        ArrayList<Window> merged = new ArrayList<>();
-        Window active = found.get(0);
-        for (int i = 1; i < found.size(); i++) {
-            Window next = found.get(i);
-            if (next.start() <= active.end()) {
-                active = new Window(active.start(), Math.max(active.end(), next.end()));
-            } else {
-                merged.add(active);
-                active = next;
-            }
-        }
-        merged.add(active);
-        return Collections.unmodifiableList(merged);
     }
 
     /** Reuse existing XML validation, avoid editing markup/attributes. */
