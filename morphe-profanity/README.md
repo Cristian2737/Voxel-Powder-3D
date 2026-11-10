@@ -39,3 +39,16 @@ The first-generation pure-Java matcher and anchored installer were exercised loc
 - The installer refuses to edit source files if expected upstream anchors change.
 
 New code: GPL-3.0-or-later. Preserve upstream Morphe notices when redistributing derived code.
+
+## If the old patch still fails with StableCaptionBlocksPatch
+
+The newer bundle is labeled **Cristian Profanity Filter**, not **Morphe Patches**.
+If the Morphe Manager error identifies the profanity filter's **source** as Morphe Patches,
+you are still selecting the old build. Delete/remove that older imported local .mpp
+source in Morphe Manager, extract the artifact from a successful workflow run of
+the newest branch revision, and add the replacement .mpp under Sources > Local.
+There should be exactly one selectable profanity filter patch from Cristian Profanity Filter.
+
+Replacing the .mpp in Downloads may not update a copy already imported into the
+manager. Delete and re-add the manager source after replacing the file. This
+fixes source/version confusion; compilation and runtime muting remain unverified.
