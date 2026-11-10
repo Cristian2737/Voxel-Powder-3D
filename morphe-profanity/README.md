@@ -15,7 +15,9 @@ This is not ContentAngel's source, and it does not include the Chrome extension.
 
 The workflow at .github/workflows/build-morphe-profanity.yml clones Morphe source, runs the Python installer, builds the custom patch bundle, and uploads a .mpp artifact when compilation succeeds.
 
-Open Actions > Build Morphe profanity filter, choose a successful workflow run and download **morphe-profanity-filter-mpp** from Artifacts. If compilation fails, inspect the job logs. It may require GitHub Packages read credentials; never commit credentials or tokens to source.
+Open Actions > Build Morphe profanity filter, choose a successful workflow run and download **morphe-profanity-filter-mpp.zip** from Artifacts. Extract the ZIP: the patch is always named **morphe-profanity-filter.mpp**, with exactly the same filename on each new build. Replace the previous file in Downloads with the new one. If compilation fails, inspect the job logs. It may require GitHub Packages read credentials; never commit credentials or tokens to source.
+
+**IMPORTANT:** The ZIP/archive filename, internal .mpp filename and source paths are stable between releases. Morphe Manager may import a copy of the source: removing/re-adding the old local source can be necessary even if you replace the file in Downloads. If you previously selected the old patch, do not leave both old and new local sources enabled. The revised patch no longer depends on the unstable StableCaptionBlocksPatch, but it still needs a real device test.
 
 ## Manual build
 
@@ -28,7 +30,7 @@ Enable Profanity filter under Morphe Settings > Player after patching YouTube. S
 
 ## Limitations
 
-The pure-Java word matcher and anchored installation script were tested locally; the full Morphe build and device behavior have not yet been verified.
+The first-generation pure-Java matcher and anchored installer were exercised locally. The **revised caption parser approach and full Morphe build/device behavior have not yet been verified**.
 
 - Captions must exist and be loaded; no captions means no filtering.
 - Auto-generated captions can be late or inaccurate, and some profanity may slip through.
