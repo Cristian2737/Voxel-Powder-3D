@@ -263,8 +263,11 @@ public final class ProfanityFilterPatch {
 
     private static void schedule() {
         if (tickScheduled || !isEnabled()
-                || (latestCaptionWindows.isEmpty() && !Settings.PROFANITY_TEST_AUDIO.get())
                 || VideoState.getCurrent() != VideoState.PLAYING) return;
+        String video = VideoInformation.getVideoId();
+        boolean transcriptForCurrentVideo = video != null && latestCaptionTrack != null
+                && video.equals(latestCaptionTrack.video()) && !latestCaptionWindows.isEmpty();
+        if (!transcriptForCurrentVideo && !Settings.PROFANITY_TEST_AUDIO.get()) return;
         tickScheduled = true;
         MAIN.postDelayed(() -> {
             tickScheduled = false;
