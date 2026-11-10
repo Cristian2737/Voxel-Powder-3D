@@ -262,7 +262,8 @@ public final class ProfanityFilterPatch {
     }
 
     private static void schedule() {
-        if (tickScheduled || !isEnabled() || windows.isEmpty()
+        if (tickScheduled || !isEnabled()
+                || (windows.isEmpty() && !Settings.PROFANITY_TEST_AUDIO.get())
                 || VideoState.getCurrent() != VideoState.PLAYING) return;
         tickScheduled = true;
         MAIN.postDelayed(() -> {
@@ -273,13 +274,24 @@ public final class ProfanityFilterPatch {
     }
 
     private static void updateMute() {
-        if (!isEnabled() || windows.isEmpty()
+        if (!isEnabled()
                 || VideoState.getCurrent() != VideoState.PLAYING
+                || currentVideo.isEmpty()
                 || !currentVideo.equals(VideoInformation.getVideoId())) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
         }
         long time = VideoInformation.getVideoTime();
+        // Explicit diagnostic, independent of caption parsing.
+        // Lets the user verify that the AudioTrack muting hook works at all.
+        if (Settings.PROFANITY_TEST_AUDIO.get() && time >= 0 && time < 5000) {
+            PlayerVolumePatch.setProfanityMuted(true);
+            return;
+        }
+        if (time < 0 || windows.isEmpty()) {
+            PlayerVolumePatch.setProfanityMuted(false);
+            return;
+        }
         int low = 0, high = windows.size() - 1, candidate = -1;
         while (low <= high) {
             int i = (low + high) >>> 1;
