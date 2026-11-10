@@ -38,6 +38,10 @@ public final class ProfanityFilterPatch {
     private static volatile String currentVideo = "";
     private static volatile TrackStamp selectedTrack;
     private static final ThreadLocal<TrackStamp> parsedTrack = new ThreadLocal<>();
+    // Captions may finish parsing before the player video ID and selection hooks fire.
+    // Retain the latest transcript briefly so event ordering does not discard it.
+    private static volatile TrackStamp latestCaptionTrack;
+    private static volatile List<Window> latestCaptionWindows = Collections.emptyList();
     private static volatile List<Window> windows = Collections.emptyList();
     private static String cachedRulesKey;
     private static Pattern cachedRules;
@@ -87,11 +91,16 @@ public final class ProfanityFilterPatch {
         if (!isEnabled()) return;
         TrackStamp next = stamp(candidate);
         Utils.runOnMainThreadNowOrLater(() -> {
-            if (next == null || !next.equals(selectedTrack)) {
-                selectedTrack = next;
-                windows = Collections.emptyList();
-                PlayerVolumePatch.setProfanityMuted(false);
-            }
+            if (next != null && next.equals(selectedTrack)) return;
+            selectedTrack = next;
+            // Native selection and caption parse callbacks can arrive in either order;
+            // the selected track can also be translated from the source captions.
+            windows = next != null && latestCaptionTrack != null
+                    && next.video().equals(latestCaptionTrack.video())
+                    ? latestCaptionWindows : Collections.emptyList();
+            PlayerVolumePatch.setProfanityMuted(false);
+            updateMute();
+            schedule();
         });
     }
 
@@ -101,9 +110,12 @@ public final class ProfanityFilterPatch {
             String video = id == null ? "" : id;
             if (video.equals(currentVideo)) return;
             currentVideo = video;
-            if (selectedTrack == null || !video.equals(selectedTrack.video())) selectedTrack = null;
-            windows = Collections.emptyList();
+            if (selectedTrack != null && !video.equals(selectedTrack.video())) selectedTrack = null;
+            windows = latestCaptionTrack != null && video.equals(latestCaptionTrack.video())
+                    ? latestCaptionWindows : Collections.emptyList();
             PlayerVolumePatch.setProfanityMuted(false);
+            updateMute();
+            schedule();
         });
     }
 
@@ -124,11 +136,22 @@ public final class ProfanityFilterPatch {
         try {
             List<Window> extracted = parseWindows(document, rules());
             Utils.runOnMainThreadNowOrLater(() -> {
-                if (!isEnabled() || !stamp.video().equals(currentVideo)
-                        || !stamp.equals(selectedTrack)) return;
+                if (!isEnabled()) return;
+                // Original and translated tracks sometimes have different VSS IDs.
+                // Filter the currently playing video by ID instead of requiring exact
+                // caption-track object equality, which discarded real captions.
+                latestCaptionTrack = stamp;
+                latestCaptionWindows = extracted;
+                boolean playingVideo = stamp.video().equals(currentVideo)
+                        || stamp.video().equals(VideoInformation.getVideoId());
+                if (!playingVideo) return;
                 windows = extracted;
                 updateMute();
                 schedule();
+                if (Settings.PROFANITY_DIAGNOSTICS.get()) {
+                    Utils.showToastShort("Profanity filter: " + extracted.size()
+                            + " mute intervals found");
+                }
             });
         } catch (RuntimeException error) {
             Logger.printException(() -> "Profanity caption timing failed", error);
