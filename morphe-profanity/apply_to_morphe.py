@@ -1,55 +1,58 @@
 #!/usr/bin/env python3
-"""Apply the caption-based profanity filter to a MorpheApp/morphe-patches checkout.
+"""Apply a caption-based profanity filter to a MorpheApp/morphe-patches checkout.
 
-Usage: python apply_to_morphe.py /path/to/morphe-patches
-Safe for repeated runs: anchored edits are idempotent.
+This installer intentionally does not depend on StableCaptionBlocksPatch.
+Usage: python3 morphe-profanity/apply_to_morphe.py morphe-src
 """
 from pathlib import Path
 import argparse
 import shutil
 import sys
 
-ROOT = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent
 
 
-def inject(path: Path, old: str, new: str) -> None:
-    text = path.read_text(encoding="utf-8")
-    if new in text:
-        print(f"Already applied: {path}")
+def inject(file: Path, before: str, after: str) -> None:
+    original = file.read_text(encoding="utf-8")
+    if after in original:
+        print("Already applied:", file)
         return
-    count = text.count(old)
-    if count != 1:
-        raise RuntimeError(f"Expected exactly one upstream anchor in {path}, found {count}: {old[:90]!r}")
-    path.write_text(text.replace(old, new), encoding="utf-8")
-    print(f"Edited: {path}")
+    matches = original.count(before)
+    if matches != 1:
+        raise RuntimeError(
+            f"Upstream source changed: expected one matching anchor, found {matches} in {file}\n"
+            f"Anchor: {before[:100]!r}"
+        )
+    file.write_text(original.replace(before, after), encoding="utf-8")
+    print("Modified:", file)
 
 
-def main(repository: Path) -> None:
-    if not (repository / "patches/src/main/kotlin/app/morphe/patches/youtube").is_dir():
-        raise RuntimeError("Not a MorpheApp/morphe-patches source checkout")
+def install(root: Path) -> None:
+    if not (root / "patches/src/main/kotlin/app/morphe/patches/youtube").is_dir():
+        raise RuntimeError("Expected MorpheApp/morphe-patches checkout")
+    java = root / "extensions/youtube/src/main/java/app/morphe/extension/youtube"
+    kotlin = root / "patches/src/main/kotlin/app/morphe/patches/youtube"
 
-    ext = repository / "extensions/youtube/src/main/java/app/morphe/extension/youtube"
-    patches = repository / "patches/src/main/kotlin/app/morphe/patches/youtube"
-    for filename in ("ProfanityRules.java", "ProfanityFilterPatch.java"):
-        source = ROOT / "src" / filename
-        target = ext / "patches" / filename
-        if target.exists() and target.read_bytes() != source.read_bytes():
-            raise RuntimeError(f"Refusing to overwrite customized file {target}")
+    for name in ("ProfanityRules.java", "ProfanityFilterPatch.java"):
+        source = HERE / "src" / name
+        target = java / "patches" / name
+        if target.is_file() and target.read_bytes() != source.read_bytes():
+            raise RuntimeError(f"Refusing to overwrite modified file: {target}")
         shutil.copyfile(source, target)
-        print(f"Installed: {target}")
+        print("Installed:", target)
 
-    new_patch = patches / "video/profanity/ProfanityFilterPatch.kt"
-    new_patch.parent.mkdir(parents=True, exist_ok=True)
-    contents = (ROOT / "src/ProfanityFilterPatch.kt").read_text(encoding="utf-8")
-    if new_patch.exists() and new_patch.read_text(encoding="utf-8") != contents:
-        raise RuntimeError(f"Refusing to overwrite customized file {new_patch}")
-    new_patch.write_text(contents, encoding="utf-8")
-    print(f"Installed: {new_patch}")
+    patch_file = kotlin / "video/profanity/ProfanityFilterPatch.kt"
+    patch_file.parent.mkdir(parents=True, exist_ok=True)
+    contents = (HERE / "src/ProfanityFilterPatch.kt").read_text(encoding="utf-8")
+    if patch_file.is_file() and patch_file.read_text(encoding="utf-8") != contents:
+        raise RuntimeError(f"Refusing to overwrite modified file: {patch_file}")
+    patch_file.write_text(contents, encoding="utf-8")
+    print("Installed:", patch_file)
 
     inject(
-        ext / "settings/Settings.java",
+        java / "settings/Settings.java",
         '    public static final BooleanSetting STABLE_CAPTION_BLOCKS = new BooleanSetting("morphe_stable_caption_blocks", FALSE, true,',
-        '''    // Opt-in, locally processed caption-based muting and subtitle masking.
+        '''    // Opt-in, locally processed subtitle-timed profanity muting and caption masking.
     public static final BooleanSetting PROFANITY_FILTER = new BooleanSetting("morphe_profanity_filter", FALSE, true);
     public static final BooleanSetting PROFANITY_CENSOR_CAPTIONS = new BooleanSetting("morphe_profanity_censor_captions", TRUE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_DEFAULT_WORDS = new BooleanSetting("morphe_profanity_default_words", TRUE, parent(PROFANITY_FILTER));
@@ -57,124 +60,67 @@ def main(repository: Path) -> None:
     public static final StringSetting PROFANITY_CUSTOM_WORDS = new StringSetting("morphe_profanity_custom_words", "", parent(PROFANITY_FILTER));
     public static final BooleanSetting STABLE_CAPTION_BLOCKS = new BooleanSetting("morphe_stable_caption_blocks", FALSE, true,''')
 
+    # This existing patched parser is installed without requiring the native
+    # StableCaptionBlocksPatch that failed in the previous device report.
+    translated = java / "patches/TranslatedCaptionPensPatch.java"
     inject(
-        ext / "patches/StableCaptionBlocks.java",
-        '''            && (Settings.STABLE_CAPTION_BLOCKS.get()
-            || AutoTranslateCaptionsPatch.translationLanguage(Settings.SECONDARY_CAPTION_LANGUAGE.get()) != null);''',
-        '''            && (Settings.STABLE_CAPTION_BLOCKS.get()
-            || AutoTranslateCaptionsPatch.translationLanguage(Settings.SECONDARY_CAPTION_LANGUAGE.get()) != null
-            || ProfanityFilterPatch.isEnabled());''')
-
+        translated,
+        '''        CaptionTracks.setTrack(parsedTrack);
+        StableCaptionBlocks.setAutomaticTrack(automatic);''',
+        '''        CaptionTracks.setTrack(parsedTrack);
+        StableCaptionBlocks.setAutomaticTrack(automatic);
+        ProfanityFilterPatch.setParsedTrack(parsedTrack);''')
     inject(
-        ext / "patches/StableCaptionBlockPolicy.java",
-        '''    private final List<Atom> atoms;''',
-        '''    static final class CensorWindow {
-        final long start, end;
-        CensorWindow(long start, long end) { this.start = start; this.end = end; }
-    }
-
-    /**
-     * Return merged mute windows from original (non-translated) source atoms.
-     * If words have no individual timestamps, mute the larger caption interval.
-     */
-    List<CensorWindow> censorWindows(java.util.regex.Pattern rules) {
-        List<CensorWindow> candidates = new ArrayList<>();
-        for (int i = 0; i < atoms.size(); i++) {
-            StringBuilder phrase = new StringBuilder();
-            for (int j = i; j < Math.min(atoms.size(), i + 4); j++) {
-                Atom current = atoms.get(j);
-                if (j != i && current.barrierBefore) break;
-                phrase.append(current.text);
-                if (!ProfanityRules.contains(phrase.toString(), rules)) continue;
-                long start = Math.max(0, atoms.get(i).start - 150);
-                long end = current.end;
-                if (j + 1 < atoms.size() && !atoms.get(j + 1).barrierBefore
-                        && atoms.get(j + 1).start > current.start) {
-                    end = Math.min(end, atoms.get(j + 1).start);
-                }
-                if (end > atoms.get(i).start) candidates.add(new CensorWindow(start, end + 220));
-                break;
-            }
-        }
-        if (candidates.isEmpty()) return List.of();
-        candidates.sort((a,b) -> Long.compare(a.start, b.start));
-        List<CensorWindow> merged = new ArrayList<>();
-        CensorWindow last = candidates.get(0);
-        for (int i = 1; i < candidates.size(); i++) {
-            CensorWindow next = candidates.get(i);
-            if (next.start <= last.end) last = new CensorWindow(last.start, Math.max(last.end, next.end));
-            else { merged.add(last); last = next; }
-        }
-        merged.add(last);
-        return List.copyOf(merged);
-    }
-
-    private final List<Atom> atoms;''')
-
+        translated,
+        '''if (input == null || (!repair && !StableCaptionBlocks.isCapturing() && !CaptionTracks.observing())) return input;''',
+        '''if (input == null || (!repair && !StableCaptionBlocks.isCapturing()
+                && !CaptionTracks.observing() && !ProfanityFilterPatch.isEnabled())) return input;''')
     inject(
-        ext / "patches/CaptionTracks.java",
-        '''            selectionDisabled = true;
-            selectedInputLanguage = null;''',
-        '''            selectionDisabled = true;
-            ProfanityFilterPatch.captionsDisabled();
-            selectedInputLanguage = null;''')
+        translated,
+        '''        StableCaptionBlocks.capture(document);
+        byte[] repaired = repair''',
+        '''        StableCaptionBlocks.capture(document);
+        ProfanityFilterPatch.captureCaptionDocument(document);
+        byte[] repaired = repair''')
     inject(
-        ext / "patches/CaptionTracks.java",
-        '''            if (current) invalidateTranslation();
-            return;
-        }
-
-        // A native prefetch may later be selected from the native parsed-result cache.''',
-        '''            if (current) {
-                invalidateTranslation();
-                ProfanityFilterPatch.captionsDisabled();
-            }
-            return;
-        }
-
-        if (current) ProfanityFilterPatch.onCaptionSource(track.video, primary);
-
-        // A native prefetch may later be selected from the native parsed-result cache.''')
-    inject(
-        ext / "patches/CaptionTracks.java",
-        '''            if (state == null && dualCaptionEnabled() && !track.automatic && !track.translated''',
-        '''            if (state == null && (dualCaptionEnabled() || ProfanityFilterPatch.isEnabled())
-                    && !track.automatic && !track.translated''')
-    inject(
-        ext / "patches/CaptionTracks.java",
-        '''                    state.captured = new Captured(track, policy);
-                    timeline.patch_setBlockState(state);''',
-        '''                    state.captured = new Captured(track, policy);
-                    if (ProfanityFilterPatch.isEnabled())
-                        ProfanityFilterPatch.onCaptionSource(track.video, policy);
-                    timeline.patch_setBlockState(state);''')
-
-    inject(
-        ext / "patches/TranslatedCaptionPensPatch.java",
-        '''        byte[] repaired = repair
-                ? TranslatedRollingCaptionPolicy.repair(copy.bytes, document)
-                : copy.bytes;
-        if (repaired == copy.bytes) return copy.input;''',
-        '''        byte[] repaired = repair
-                ? TranslatedRollingCaptionPolicy.repair(copy.bytes, document)
-                : copy.bytes;
-        // Capture above uses original timing/text; only valid caption XML is modified.
-        if (document != null) repaired = ProfanityFilterPatch.censorCaptionBytes(repaired);
+        translated,
+        '''        if (repaired == copy.bytes) return copy.input;''',
+        '''        if (document != null) repaired = ProfanityFilterPatch.censorCaptionBytes(repaired);
         if (repaired == copy.bytes) return copy.input;''')
 
+    # Identify which original or auto-caption track was selected.
+    # In particular, turning subtitles off clears the mute schedule.
+    selection = java / "patches/PreferredCaptionLanguagePatch.java"
     inject(
-        ext / "patches/PlayerVolumePatch.java",
+        selection,
+        '''        CaptionTrackInterface selected = choosePreferredCaptionTrack(subtitleManager, originalTrack);
+        rememberSelection(subtitleManager, selected);''',
+        '''        CaptionTrackInterface selected = choosePreferredCaptionTrack(subtitleManager, originalTrack);
+        ProfanityFilterPatch.onCaptionSelected(selected);
+        rememberSelection(subtitleManager, selected);''')
+    inject(
+        selection,
+        '''            rememberSelection(subtitleManager, track);
+            if (CaptionTracks.dualCaptionEnabled()''',
+        '''            ProfanityFilterPatch.onCaptionSelected(track);
+            rememberSelection(subtitleManager, track);
+            if (CaptionTracks.dualCaptionEnabled()''')
+
+    # Use a separate channel from user-mute and TTS ducking.
+    volume = java / "patches/PlayerVolumePatch.java"
+    inject(
+        volume,
         '''    private static volatile boolean muted;
     private static volatile float lastBaseVolume''',
         '''    private static volatile boolean muted;
     private static volatile boolean profanityMuted;
     private static volatile float lastBaseVolume''')
     inject(
-        ext / "patches/PlayerVolumePatch.java",
+        volume,
         '''        return muted ? 0f : duckMultiplier;''',
         '''        return (muted || profanityMuted) ? 0f : duckMultiplier;''')
     inject(
-        ext / "patches/PlayerVolumePatch.java",
+        volume,
         '''    public static boolean isMuted() {
         return muted;
     }''',
@@ -182,32 +128,32 @@ def main(repository: Path) -> None:
         return muted;
     }
 
-    /** Independent from the user mute button and voiceover ducking. */
-    public static void setProfanityMuted(boolean mute) {
-        if (mute == profanityMuted) return;
-        profanityMuted = mute;
+    /** Muting for detected words, independent of the user mute button. */
+    public static void setProfanityMuted(boolean value) {
+        if (profanityMuted == value) return;
+        profanityMuted = value;
         applyMultiplier();
     }''')
 
     inject(
-        repository / "patches/src/main/resources/addresources/values/youtube/strings.xml",
+        root / "patches/src/main/resources/addresources/values/youtube/strings.xml",
         "</resources>",
-        '''    <!-- Experimental profanity filter -->
+        '''    <!-- Optional, experimental profanity filter -->
     <string name="morphe_profanity_screen_title">Profanity filter</string>
-    <string name="morphe_profanity_screen_summary">Automatically mute caption-detected profanity</string>
+    <string name="morphe_profanity_screen_summary">Mute profanity detected in timed subtitles</string>
     <string name="morphe_profanity_filter_title">Enable profanity filter</string>
-    <string name="morphe_profanity_filter_summary">Requires captions and an app restart after enabling</string>
+    <string name="morphe_profanity_filter_summary">Uses existing video captions. Restart YouTube after enabling.</string>
     <string name="morphe_profanity_censor_captions_title">Censor caption text</string>
-    <string name="morphe_profanity_censor_captions_summary">Replace detected words with asterisks</string>
+    <string name="morphe_profanity_censor_captions_summary">Replace matching words with asterisks</string>
     <string name="morphe_profanity_default_words_title">Filter common profanity</string>
-    <string name="morphe_profanity_default_words_summary">Uses a default list</string>
+    <string name="morphe_profanity_default_words_summary">Use the built-in common-word list</string>
     <string name="morphe_profanity_reverent_phrases_title">Filter irreverent expressions</string>
-    <string name="morphe_profanity_reverent_phrases_summary">Includes oh my God and Jesus Christ</string>
+    <string name="morphe_profanity_reverent_phrases_summary">Include oh my God and Jesus Christ</string>
     <string name="morphe_profanity_custom_words_title">Custom words / exclusions</string>
-    <string name="morphe_profanity_custom_words_summary">Separate phrases with commas; prefix - to exclude a default</string>
+    <string name="morphe_profanity_custom_words_summary">Comma-separated phrases; prefix - to exclude a default term</string>
 </resources>''')
 
-    print("Source changes applied. Build with ./gradlew buildAndroid.")
+    print("Installed updated caption-parser approach. Run: ./gradlew buildAndroid")
 
 
 if __name__ == "__main__":
@@ -215,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("repository", type=Path)
     args = parser.parse_args()
     try:
-        main(args.repository.resolve())
-    except (RuntimeError, OSError) as error:
+        install(args.repository.resolve())
+    except (OSError, RuntimeError) as error:
         print("FAILED:", error, file=sys.stderr)
         sys.exit(1)
