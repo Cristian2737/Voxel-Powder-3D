@@ -27,6 +27,16 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Run independent profanity and caption timing tests
+        run: |
+          mkdir -p /tmp/profanity-testclasses
+          javac -d /tmp/profanity-testclasses \
+            morphe-profanity/src/ProfanityRules.java \
+            morphe-profanity/src/ProfanitySchedule.java \
+            morphe-profanity/tests/ProfanityScheduleTest.java
+          java -cp /tmp/profanity-testclasses \
+            app.morphe.extension.youtube.patches.ProfanityScheduleTest
+
       - name: Fetch Morphe patches source
         run: git clone --depth 1 https://github.com/MorpheApp/morphe-patches.git morphe-src
 
