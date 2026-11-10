@@ -153,6 +153,19 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_custom_words_summary">Comma-separated phrases; prefix - to exclude a default term</string>
 </resources>''')
 
+    # Give the custom bundle its own visible source name. This is a Morphe-derived
+    # test build, not an official Morphe Patches release.
+    inject(
+        root / "patches/build.gradle.kts",
+        '''        name = "Morphe Patches"
+        description = "Patches for Morphe"
+        source = "git@github.com:MorpheApp/morphe-patches.git"
+        author = "MorpheApp"''',
+        '''        name = "Cristian Profanity Filter"
+        description = "Experimental caption-timed profanity filter based on Morphe patches"
+        source = "https://github.com/Cristian2737/Voxel-Powder-3D/tree/morphe-profanity-filter-prototype"
+        author = "Cristian2737"''')
+
     print("Installed updated caption-parser approach. Run: ./gradlew buildAndroid")
 
 
