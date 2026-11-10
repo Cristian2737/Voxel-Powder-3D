@@ -203,6 +203,35 @@ public final class ProfanityFilterPatch {
         }
     }
 
+    /**
+     * Replacement rendering for the native YouTube subtitle XML.
+     * Android's native caption renderer has no general blur span hook;
+     * the "blocks" option obscures letters without pretending to be a true blur.
+     */
+    private static String captionReplacement(String text, Pattern pattern, String style) {
+        Matcher matcher = pattern.matcher(text);
+        StringBuilder out = new StringBuilder(text.length());
+        int from = 0;
+        while (matcher.find()) {
+            if (matcher.start() == matcher.end()) continue;
+            out.append(text, from, matcher.start());
+            String word = matcher.group();
+            switch (style) {
+                case "brackets" -> out.append("[censored]");
+                case "hide" -> { /* remove only matched text */ }
+                case "blocks" -> {
+                    for (int i = 0; i < word.length(); i++) out.append('█');
+                }
+                default -> {
+                    for (int i = 0; i < word.length(); i++) out.append('*');
+                }
+            }
+            from = matcher.end();
+        }
+        out.append(text, from, text.length());
+        return out.toString();
+    }
+
     /** Reuse existing XML validation, avoid editing markup/attributes. */
     public static byte[] censorCaptionBytes(byte[] original) {
         if (!isEnabled() || !Settings.PROFANITY_CENSOR_CAPTIONS.get() || original == null) return original;
@@ -213,7 +242,8 @@ public final class ProfanityFilterPatch {
         int from = 0;
         while (matcher.find()) {
             String before = matcher.group(1);
-            String after = ProfanityRules.censor(before, pattern);
+            String after = captionReplacement(
+                    before, pattern, Settings.PROFANITY_CENSOR_STYLE.get());
             if (before.equals(after)) continue;
             if (out == null) out = new StringBuilder(xml.length() + 64);
             out.append(xml, from, matcher.start(1)).append(after);
