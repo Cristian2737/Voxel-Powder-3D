@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,17 +37,28 @@ public final class ProfanityFilterPatch {
     private static volatile String currentVideo = "";
     private static volatile TrackStamp selectedTrack;
     private static final ThreadLocal<TrackStamp> parsedTrack = new ThreadLocal<>();
-    // Captions may finish parsing before the player video ID and selection hooks fire.
-    // Retain the latest transcript briefly so event ordering does not discard it.
-    private static volatile TrackStamp latestCaptionTrack;
-    private static volatile List<Window> latestCaptionWindows = Collections.emptyList();
-    private static volatile List<Window> windows = Collections.emptyList();
+    // Multiple timedtext tracks may be fetched in parallel (for previews and
+    // alternate languages). Keep a bounded per-video cache, not a single global
+    // transcript which an unrelated video could overwrite.
+    private static final Map<String, CaptionData> captionCache =
+            Collections.synchronizedMap(new LinkedHashMap<>() {
+                @Override protected boolean removeEldestEntry(
+                        Map.Entry<String, CaptionData> eldest) {
+                    return size() > 5;
+                }
+            });
     private static String cachedRulesKey;
     private static Pattern cachedRules;
     private static boolean tickScheduled;
 
     private record TrackStamp(String video, String vss, String language) {}
     private record Window(long start, long end) {}
+    private record CaptionData(TrackStamp track, List<Window> windows, int matches) {
+        boolean automatic() {
+            String vss = track.vss();
+            return vss.startsWith("a.") || vss.startsWith("ta.");
+        }
+    }
 
     private ProfanityFilterPatch() {}
 
@@ -130,11 +142,8 @@ public final class ProfanityFilterPatch {
         Utils.runOnMainThreadNowOrLater(() -> {
             if (next != null && next.equals(selectedTrack)) return;
             selectedTrack = next;
-            // Native selection and caption parse callbacks can arrive in either order;
-            // the selected track can also be translated from the source captions.
-            windows = next != null && latestCaptionTrack != null
-                    && next.video().equals(latestCaptionTrack.video())
-                    ? latestCaptionWindows : Collections.emptyList();
+            // Native selection and caption parse callbacks can arrive in either order.
+            // The schedule is looked up by player video ID, not by caption-track equality.
             PlayerVolumePatch.setProfanityMuted(false);
             updateMute();
             schedule();
@@ -148,8 +157,6 @@ public final class ProfanityFilterPatch {
             if (video.equals(currentVideo)) return;
             currentVideo = video;
             if (selectedTrack != null && !video.equals(selectedTrack.video())) selectedTrack = null;
-            windows = latestCaptionTrack != null && video.equals(latestCaptionTrack.video())
-                    ? latestCaptionWindows : Collections.emptyList();
             PlayerVolumePatch.setProfanityMuted(false);
             updateMute();
             schedule();
@@ -181,21 +188,26 @@ public final class ProfanityFilterPatch {
             final List<Window> compiledWindows = extracted;
             Utils.runOnMainThreadNowOrLater(() -> {
                 if (!isEnabled()) return;
-                // Original and translated tracks sometimes have different VSS IDs.
-                // Filter the currently playing video by ID instead of requiring exact
-                // caption-track object equality, which discarded real captions.
-                latestCaptionTrack = stamp;
-                latestCaptionWindows = compiledWindows;
+                // When YouTube happens to provide both tracks, retain the more
+                // accurate automatic caption timing instead of replacing it with
+                // a manual caption transcript or a zero-match preview.
+                CaptionData next = new CaptionData(stamp, compiledWindows, scanned.matchCount());
+                CaptionData prior = captionCache.get(stamp.video());
+                boolean preferPrior = prior != null && (
+                        prior.automatic() && !next.automatic()
+                        || prior.matches() > 0 && next.matches() == 0);
+                if (!preferPrior) captionCache.put(stamp.video(), next);
                 boolean playingVideo = stamp.video().equals(currentVideo)
                         || stamp.video().equals(VideoInformation.getVideoId());
                 if (!playingVideo) return;
-                windows = compiledWindows;
                 updateMute();
                 schedule();
                 if (Settings.PROFANITY_DIAGNOSTICS.get()) {
-                    Utils.showToastShort("Profanity filter: " + scanned.matchCount()
-                            + " words/phrases, " + scanned.windows().size()
-                            + " mute windows in " + scanned.captionCount() + " captions");
+                    CaptionData active = captionCache.get(stamp.video());
+                    Utils.showToastShort("Filter: " + (active == null ? 0 : active.matches())
+                            + " matches / " + (active == null ? 0 : active.windows().size())
+                            + " windows; scanned " + scanned.captionCount()
+                            + " captions, " + scanned.segmentCount() + " segments");
                 }
             });
         } catch (RuntimeException error) {
@@ -263,8 +275,8 @@ public final class ProfanityFilterPatch {
         if (tickScheduled || !isEnabled()
                 || VideoState.getCurrent() != VideoState.PLAYING) return;
         String video = VideoInformation.getVideoId();
-        boolean transcriptForCurrentVideo = video != null && latestCaptionTrack != null
-                && video.equals(latestCaptionTrack.video()) && !latestCaptionWindows.isEmpty();
+        CaptionData current = video == null ? null : captionCache.get(video);
+        boolean transcriptForCurrentVideo = current != null && !current.windows().isEmpty();
         if (!transcriptForCurrentVideo && !Settings.PROFANITY_TEST_AUDIO.get()) return;
         tickScheduled = true;
         MAIN.postDelayed(() -> {
@@ -290,12 +302,12 @@ public final class ProfanityFilterPatch {
         }
         // Caption requests can complete before or after selection / video-ID hooks.
         // Resynchronize on the actual playing video rather than stale callback state.
-        TrackStamp track = latestCaptionTrack;
-        if (track == null || !video.equals(track.video()) || time < 0) {
+        CaptionData data = captionCache.get(video);
+        if (data == null || time < 0) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
         }
-        List<Window> currentWindows = latestCaptionWindows;
+        List<Window> currentWindows = data.windows();
         if (currentWindows.isEmpty()) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
