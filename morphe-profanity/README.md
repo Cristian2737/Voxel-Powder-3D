@@ -52,3 +52,33 @@ There should be exactly one selectable profanity filter patch from Cristian Prof
 Replacing the .mpp in Downloads may not update a copy already imported into the
 manager. Delete and re-add the manager source after replacing the file. This
 fixes source/version confusion; compilation and runtime muting remain unverified.
+
+## v0.3 runtime troubleshooting
+
+The **v0.3** prototype improves timestamp/caption-track matching and adds two
+optional switches in YouTube's Morphe Settings > Player > Profanity filter.
+The **patch display name, workflow artifact name, and installed .mpp filename
+are unchanged**, so replacing an existing local bundle remains straightforward.
+
+To test after installing the latest successful build:
+
+1. Turn on **Enable profanity filter**. The setting description should say
+   **Prototype v0.3** (otherwise the old patch was installed).
+2. Turn on **Test audio muting (first 5 seconds)**, open a new YouTube video,
+   and play from 0:00. The first five seconds should be silent. This checks
+   the audio-volume hook even if the video has no captions. Turn this test
+   switch back **off** afterward.
+3. Turn on **Show filter diagnostics**, turn on English captions for a video
+   with timed subtitles, and start it again. A brief in-app message should
+   indicate how many mute intervals the parser found. **0** means captions
+   loaded but no matching words were found in the parsed caption track.
+4. If the audio test works and the caption parser finds mute intervals, the
+   main filter should mute the matching intervals; word timing can remain
+   approximate, especially on auto-generated captions.
+
+The experimental filter does **not** transcribe speech directly. It needs a
+caption track, and it cannot guarantee profanity suppression on videos without
+usable captions. The test and diagnostic switches are **off by default**.
+
+This is source-only troubleshooting progress: full compilation and on-device
+behavior still require a successful GitHub Actions build and a device test.
