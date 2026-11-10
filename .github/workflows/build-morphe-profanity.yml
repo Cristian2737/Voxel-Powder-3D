@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: read
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,3 +60,16 @@ jobs:
           name: morphe-profanity-filter-mpp
           path: morphe-src/patches/build/libs/morphe-profanity-filter.mpp
           if-no-files-found: error
+
+      - name: Publish stable latest download for MacroDroid
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=morphe-profanity-latest
+          artifact=morphe-src/patches/build/libs/morphe-profanity-filter.mpp
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "Morphe Profanity Filter (experimental latest)" \
+              --prerelease --notes "Auto-updated after successful experimental source builds. This is not an official Morphe build. Check source and device-test before use."
+          gh release upload "$tag" "$artifact" --clobber --repo "$GITHUB_REPOSITORY"
