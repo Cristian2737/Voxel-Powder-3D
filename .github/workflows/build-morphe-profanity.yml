@@ -39,9 +39,14 @@ jobs:
           chmod +x gradlew
           ./gradlew buildAndroid --no-daemon
 
+      - name: Set a consistent patch filename
+        run: |
+          test "$(find morphe-src/patches/build/libs -maxdepth 1 -name '*.mpp' | wc -l)" -eq 1
+          cp "$(find morphe-src/patches/build/libs -maxdepth 1 -name '*.mpp' -print -quit)" morphe-src/patches/build/libs/morphe-profanity-filter.mpp
+
       - name: Upload .mpp patch bundle
         uses: actions/upload-artifact@v4
         with:
           name: morphe-profanity-filter-mpp
-          path: morphe-src/patches/build/libs/*.mpp
+          path: morphe-src/patches/build/libs/morphe-profanity-filter.mpp
           if-no-files-found: error
