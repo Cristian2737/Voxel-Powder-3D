@@ -263,7 +263,7 @@ public final class ProfanityFilterPatch {
 
     private static void schedule() {
         if (tickScheduled || !isEnabled()
-                || (windows.isEmpty() && !Settings.PROFANITY_TEST_AUDIO.get())
+                || (latestCaptionWindows.isEmpty() && !Settings.PROFANITY_TEST_AUDIO.get())
                 || VideoState.getCurrent() != VideoState.PLAYING) return;
         tickScheduled = true;
         MAIN.postDelayed(() -> {
@@ -274,33 +274,40 @@ public final class ProfanityFilterPatch {
     }
 
     private static void updateMute() {
+        String video = VideoInformation.getVideoId();
         if (!isEnabled()
                 || VideoState.getCurrent() != VideoState.PLAYING
-                || currentVideo.isEmpty()
-                || !currentVideo.equals(VideoInformation.getVideoId())) {
+                || video == null || video.isEmpty()) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
         }
         long time = VideoInformation.getVideoTime();
-        // Explicit diagnostic, independent of caption parsing.
-        // Lets the user verify that the AudioTrack muting hook works at all.
+        // Test mode does not require captions or the separate onVideoId hook.
         if (Settings.PROFANITY_TEST_AUDIO.get() && time >= 0 && time < 5000) {
             PlayerVolumePatch.setProfanityMuted(true);
             return;
         }
-        if (time < 0 || windows.isEmpty()) {
+        // Caption requests can complete before or after selection / video-ID hooks.
+        // Resynchronize on the actual playing video rather than stale callback state.
+        TrackStamp track = latestCaptionTrack;
+        if (track == null || !video.equals(track.video()) || time < 0) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
         }
-        int low = 0, high = windows.size() - 1, candidate = -1;
+        List<Window> currentWindows = latestCaptionWindows;
+        if (currentWindows.isEmpty()) {
+            PlayerVolumePatch.setProfanityMuted(false);
+            return;
+        }
+        int low = 0, high = currentWindows.size() - 1, candidate = -1;
         while (low <= high) {
             int i = (low + high) >>> 1;
-            if (windows.get(i).start() <= time) {
+            if (currentWindows.get(i).start() <= time) {
                 candidate = i;
                 low = i + 1;
             } else high = i - 1;
         }
-        PlayerVolumePatch.setProfanityMuted(candidate >= 0 && time >= 0
-                && time < windows.get(candidate).end());
+        PlayerVolumePatch.setProfanityMuted(candidate >= 0
+                && time < currentWindows.get(candidate).end());
     }
 }
