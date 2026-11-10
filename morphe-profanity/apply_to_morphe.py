@@ -33,7 +33,7 @@ def install(root: Path) -> None:
     java = root / "extensions/youtube/src/main/java/app/morphe/extension/youtube"
     kotlin = root / "patches/src/main/kotlin/app/morphe/patches/youtube"
 
-    for name in ("ProfanityRules.java", "ProfanityFilterPatch.java"):
+    for name in ("ProfanityRules.java", "ProfanitySchedule.java", "ProfanityFilterPatch.java"):
         source = HERE / "src" / name
         target = java / "patches" / name
         if target.is_file() and target.read_bytes() != source.read_bytes():
@@ -53,11 +53,18 @@ def install(root: Path) -> None:
         java / "settings/Settings.java",
         '    public static final BooleanSetting STABLE_CAPTION_BLOCKS = new BooleanSetting("morphe_stable_caption_blocks", FALSE, true,',
         '''    // Opt-in, locally processed subtitle-timed profanity muting and caption masking.
-    public static final BooleanSetting PROFANITY_FILTER = new BooleanSetting("morphe_profanity_filter", FALSE, true);
+    public static final BooleanSetting PROFANITY_FILTER = new BooleanSetting("morphe_profanity_filter", TRUE, true);
     public static final BooleanSetting PROFANITY_CENSOR_CAPTIONS = new BooleanSetting("morphe_profanity_censor_captions", TRUE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_DEFAULT_WORDS = new BooleanSetting("morphe_profanity_default_words", TRUE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_REVERENT_PHRASES = new BooleanSetting("morphe_profanity_reverent_phrases", TRUE, parent(PROFANITY_FILTER));
     public static final StringSetting PROFANITY_CUSTOM_WORDS = new StringSetting("morphe_profanity_custom_words", "", parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_CUSTOM_REGEX = new StringSetting("morphe_profanity_custom_regex", "", parent(PROFANITY_FILTER));
+    public static final BooleanSetting PROFANITY_WORD_BOUNDARY = new BooleanSetting("morphe_profanity_word_boundary", TRUE, parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_MUTE_BUFFER = new StringSetting("morphe_profanity_mute_buffer", "150", parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_MUTE_DURATION = new StringSetting("morphe_profanity_mute_duration", "1500", parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_CENSOR_STYLE = new StringSetting("morphe_profanity_censor_style", "asterisks", parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_ALWAYS_CHANNELS = new StringSetting("morphe_profanity_always_channels", "", parent(PROFANITY_FILTER));
+    public static final StringSetting PROFANITY_NEVER_CHANNELS = new StringSetting("morphe_profanity_never_channels", "", parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_DIAGNOSTICS = new BooleanSetting("morphe_profanity_diagnostics", FALSE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_TEST_AUDIO = new BooleanSetting("morphe_profanity_test_audio", FALSE, parent(PROFANITY_FILTER));
     public static final BooleanSetting STABLE_CAPTION_BLOCKS = new BooleanSetting("morphe_stable_caption_blocks", FALSE, true,''')
@@ -144,7 +151,7 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_screen_title">Profanity filter</string>
     <string name="morphe_profanity_screen_summary">Mute profanity detected in timed subtitles</string>
     <string name="morphe_profanity_filter_title">Enable profanity filter</string>
-    <string name="morphe_profanity_filter_summary">Prototype v0.3: uses YouTube captions; restart after enabling.</string>
+    <string name="morphe_profanity_filter_summary">Prototype v0.4: ContentAngel-inspired caption timing; restart after changing settings.</string>
     <string name="morphe_profanity_censor_captions_title">Censor caption text</string>
     <string name="morphe_profanity_censor_captions_summary">Replace matching words with asterisks</string>
     <string name="morphe_profanity_default_words_title">Filter common profanity</string>
@@ -152,11 +159,45 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_reverent_phrases_title">Filter irreverent expressions</string>
     <string name="morphe_profanity_reverent_phrases_summary">Include oh my God and Jesus Christ</string>
     <string name="morphe_profanity_custom_words_title">Custom words / exclusions</string>
-    <string name="morphe_profanity_custom_words_summary">Comma-separated phrases; prefix - to exclude a default term</string>
+    <string name="morphe_profanity_custom_words_summary">Literal words and phrases separated by commas; prefix - to exclude a default</string>
+    <string name="morphe_profanity_custom_regex_title">Custom regex patterns</string>
+    <string name="morphe_profanity_custom_regex_summary">Advanced: each expression on a separate line; invalid entries ignored</string>
+    <string name="morphe_profanity_word_boundary_title">Match word boundaries</string>
+    <string name="morphe_profanity_word_boundary_summary">Avoid partial-word matches for normal words</string>
+    <string name="morphe_profanity_mute_buffer_title">Mute before word (milliseconds)</string>
+    <string name="morphe_profanity_mute_buffer_summary">0–500; defaults to 150</string>
+    <string name="morphe_profanity_mute_duration_title">Fallback mute duration (milliseconds)</string>
+    <string name="morphe_profanity_mute_duration_summary">100–5000; defaults to 1500 when precise word timing is unavailable</string>
+    <string name="morphe_profanity_censor_style_title">Caption censor style</string>
+    <string name="morphe_profanity_censor_style_summary">Asterisks, [censored], hide or blocks</string>
+    <string name="morphe_profanity_always_channels_title">Always censor channels</string>
+    <string name="morphe_profanity_always_channels_summary">Exact channel IDs/names separated by commas; override global switch</string>
+    <string name="morphe_profanity_never_channels_title">Never censor channels</string>
+    <string name="morphe_profanity_never_channels_summary">Exact channel IDs/names; takes priority over Always censor</string>
     <string name="morphe_profanity_diagnostics_title">Show filter diagnostics</string>
     <string name="morphe_profanity_diagnostics_summary">Show the number of detected mute intervals when captions load</string>
     <string name="morphe_profanity_test_audio_title">Test audio muting (first 5 seconds)</string>
     <string name="morphe_profanity_test_audio_summary">Temporarily silence the first five seconds of each video to test audio controls; turn off afterward</string>
+</resources>''')
+
+    # The native preference list uses the same four conceptual styles as the
+    # browser extension, with opaque blocks instead of unsupported real blur.
+    inject(
+        root / "patches/src/main/resources/addresources/values/youtube/arrays.xml",
+        "</resources>",
+        '''    <!-- Morphe profanity filter caption styles -->
+    <string-array name="morphe_profanity_censor_style_entries">
+        <item>Asterisks</item>
+        <item>[censored]</item>
+        <item>Hidden words</item>
+        <item>Opaque blocks (blur alternative)</item>
+    </string-array>
+    <string-array name="morphe_profanity_censor_style_entry_values">
+        <item>asterisks</item>
+        <item>brackets</item>
+        <item>hide</item>
+        <item>blocks</item>
+    </string-array>
 </resources>''')
 
     # Give the custom bundle its own visible source name. This is a Morphe-derived
