@@ -3,6 +3,7 @@ package app.morphe.patches.youtube.video.profanity
 
 import app.morphe.patcher.patch.patch
 import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPreference
+import app.morphe.patches.shared.misc.settings.preference.ListPreference
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.shared.misc.settings.preference.TextPreference
 import app.morphe.patches.youtube.layout.captions.translatedCaptionPensPatch
@@ -40,6 +41,13 @@ val profanityFilterPatch = patch(
                     SwitchPreference("morphe_profanity_default_words", summary = true),
                     SwitchPreference("morphe_profanity_reverent_phrases", summary = true),
                     TextPreference("morphe_profanity_custom_words"),
+                    TextPreference("morphe_profanity_custom_regex"),
+                    SwitchPreference("morphe_profanity_word_boundary", summary = true),
+                    TextPreference("morphe_profanity_mute_buffer"),
+                    TextPreference("morphe_profanity_mute_duration"),
+                    ListPreference("morphe_profanity_censor_style"),
+                    TextPreference("morphe_profanity_always_channels"),
+                    TextPreference("morphe_profanity_never_channels"),
                     SwitchPreference("morphe_profanity_diagnostics", summary = true),
                     SwitchPreference("morphe_profanity_test_audio", summary = true),
                 ),
