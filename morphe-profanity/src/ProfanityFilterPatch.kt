@@ -5,8 +5,7 @@ import app.morphe.patcher.patch.patch
 import app.morphe.patches.shared.misc.settings.preference.PreferenceScreenPreference
 import app.morphe.patches.shared.misc.settings.preference.SwitchPreference
 import app.morphe.patches.shared.misc.settings.preference.TextPreference
-import app.morphe.patches.youtube.layout.captions.captionTrackCapturePatch
-import app.morphe.patches.youtube.layout.captions.stableCaptionBlocksPatch
+import app.morphe.patches.youtube.layout.captions.translatedCaptionPensPatch
 import app.morphe.patches.youtube.misc.settings.PreferenceScreen
 import app.morphe.patches.youtube.misc.settings.settingsPatch
 import app.morphe.patches.youtube.shared.Constants.COMPATIBILITY_YOUTUBE
@@ -24,8 +23,7 @@ val profanityFilterPatch = patch(
     description = "Mutes caption-timed profanity and optionally masks subtitle text locally. Requires a caption track.",
 ) {
     dependsOn(
-        stableCaptionBlocksPatch,
-        captionTrackCapturePatch,
+        translatedCaptionPensPatch,
         videoInformationPatch,
         playerVolumeHookPatch,
         settingsPatch,
