@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.function.BiConsumer;
 
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -36,6 +37,10 @@ public final class ProfanityFilterPatch {
     private static volatile String currentVideo = "";
     private static volatile TrackStamp selectedTrack;
     private static final ThreadLocal<TrackStamp> parsedTrack = new ThreadLocal<>();
+    // Same-signature instrumentation may observe the original timing document.
+    // Null in normal use: no caption export, retention, or extra network request.
+    @Nullable private static volatile BiConsumer<Document, String> captionObserver;
+    private static final ThreadLocal<String> observedTrackUrl = new ThreadLocal<>();
     // Multiple timedtext tracks may be fetched in parallel (for previews and
     // alternate languages). Keep a bounded per-video cache, not a single global
     // transcript which an unrelated video could overwrite.
@@ -165,9 +170,14 @@ public final class ProfanityFilterPatch {
     /** Capture the current parser thread's request before reading its caption bytes. */
     public static void setParsedTrack(@Nullable Object candidate) {
         parsedTrack.remove();
+        observedTrackUrl.remove();
         if (isEnabled()) {
             TrackStamp stamp = stamp(candidate);
             if (stamp != null) parsedTrack.set(stamp);
+            if (stamp != null && captionObserver != null
+                    && candidate instanceof AutoTranslateCaptionsPatch.CaptionTrackInterface track) {
+                observedTrackUrl.set(track.patch_getUrl());
+            }
         }
     }
 
@@ -175,7 +185,16 @@ public final class ProfanityFilterPatch {
     public static void captureCaptionDocument(@Nullable Document document) {
         TrackStamp stamp = parsedTrack.get();
         parsedTrack.remove();
+        String sourceUrl = observedTrackUrl.get();
+        observedTrackUrl.remove();
         if (!isEnabled() || stamp == null || document == null) return;
+        BiConsumer<Document, String> observer = captionObserver;
+        if (observer != null) {
+            try { observer.accept(document, sourceUrl); }
+            catch (RuntimeException error) {
+                Logger.printException(() -> "Caption timing observer failed", error);
+            }
+        }
         try {
             ProfanitySchedule.Scan scanned = ProfanitySchedule.scan(
                     document, rules(), muteBufferMs(), muteDurationMs());

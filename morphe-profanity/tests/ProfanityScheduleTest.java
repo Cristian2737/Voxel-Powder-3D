@@ -43,7 +43,35 @@ public final class ProfanityScheduleTest {
         check(wordTimed.matchCount() == 1, "one detected profanity word");
         check(wordTimed.windows().size() == 1, "one mute window");
         check(wordTimed.windows().get(0).start() <= 1850, "muting begins before word");
-        check(wordTimed.windows().get(0).end() >= 2250, "muting continues through word");
+        check(wordTimed.windows().get(0).end() == 2170, "word ends before trailing space and next word");
+
+        var terminal = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"12000\"><s>well </s><s t=\"300\">shit</s></p>"
+                + "<p t=\"1900\" d=\"900\">clean word</p>"), all, 150, 1500);
+        check(terminal.windows().get(0).start() == 1150, "last word has no extra sentence lead-in");
+        check(terminal.windows().get(0).end() == 1900, "rolling line cannot mute the following line");
+        var lonely = ProfanitySchedule.scan(doc("<p t=\"1000\" d=\"12000\"><s>shit</s></p>"), all, 150, 1500);
+        check(lonely.windows().get(0).end() == 2500, "single word respects fallback without end padding");
+        var censoredToken = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"12000\"><s t=\"0\">[ __ ]</s></p>"), all, 150, 500);
+        check(censoredToken.windows().get(0).end() == 1500, "placeholder is one word despite its spaces");
+        var timedPhrase = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"4000\"><s t=\"0\">well shit </s>"
+                + "<s t=\"1000\">clean words</s></p>"), all, 150, 1500);
+        check(timedPhrase.windows().get(0).start() == 1350, "timed phrase uses character location");
+        check(timedPhrase.windows().get(0).end() == 1900, "timed phrase has no sentence-wide margin");
+        var formatted = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"3000\"><s>well </s><s>shit</s></p>"), all, 150, 1500);
+        check(formatted.windows().get(0).start() > 1000, "format-only segments are not fake zero-offset words");
+        var blankLine = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"9000\"><s t=\"0\">shit</s></p>"
+                + "<p t=\"1200\" d=\"1000\"> </p><p t=\"2000\" d=\"1000\">clean</p>"), all, 150, 1500);
+        check(blankLine.windows().get(0).end() == 2000, "empty rendering events are not word-end anchors");
+        var partialPattern = ProfanityRules.compile(false, false, "fuck", "", false);
+        var partial = ProfanitySchedule.scan(doc(
+                "<p t=\"1000\" d=\"3000\"><s t=\"0\">fucking</s><s t=\"700\">clean</s></p>"),
+                partialPattern, 0, 1500);
+        check(partial.windows().get(0).end() == 1400, "partial match uses only matched character times");
 
         var betweenLines = ProfanitySchedule.scan(doc(
                 "<p t=\"1000\" d=\"600\">oh my</p>"

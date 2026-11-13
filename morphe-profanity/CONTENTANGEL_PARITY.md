@@ -6,9 +6,19 @@ This is an **independent implementation** for Morphe Android, not copied extensi
 
 ## Reference check and development priorities (November 13, 2026)
 
-Rechecked the developer's Chrome Web Store description against this matrix. Its
-current listed version is still 1.5.1. The listing describes public behavior;
-this check does not establish how its current internal code implements it.
+The installed ContentAngel 1.5.1 package and its shipped source maps were
+inspected directly. Its parser and planner were exercised privately on synthetic
+caption inputs, without starting the extension. Version 0.6 matches 41 resulting
+word-timing cases within one millisecond. Only synthetic inputs and expected
+outputs are kept here; the extension's code is not redistributed.
+
+The checks exposed concrete differences in v0.5: a missing final-word timestamp
+was padded past its fallback end; rolling caption display duration could cover
+the next line; bounded multi-word segments were widened as though no next
+timestamp existed; and partial matches occupied an entire timed segment.
+Version 0.6 corrects these rules. This does not yet establish that the Android
+track supplies the same word offsets as the browser track: raw native timing
+data and a live test of the new APK are still needed.
 
 ContentAngel remains the behavior reference for matching, timing, caption
 masking, channel exceptions, and settings. In particular, its stated use of

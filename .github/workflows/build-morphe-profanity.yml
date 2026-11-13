@@ -33,9 +33,13 @@ jobs:
           javac -d /tmp/profanity-testclasses \
             morphe-profanity/src/ProfanityRules.java \
             morphe-profanity/src/ProfanitySchedule.java \
-            morphe-profanity/tests/ProfanityScheduleTest.java
+            morphe-profanity/tests/ProfanityScheduleTest.java \
+            morphe-profanity/tests/ContentAngelTimingTest.java
           java -cp /tmp/profanity-testclasses \
             app.morphe.extension.youtube.patches.ProfanityScheduleTest
+          java -cp /tmp/profanity-testclasses \
+            app.morphe.extension.youtube.patches.ContentAngelTimingTest \
+            morphe-profanity/tests/contentangel-word-timing.tsv
 
       - name: Fetch Morphe patches source
         run: git clone --depth 1 --branch v2.2.0 https://github.com/MorpheApp/morphe-patches.git morphe-src

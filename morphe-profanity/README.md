@@ -1,4 +1,4 @@
-# Morphe YouTube profanity filter - prototype v0.5
+# Morphe YouTube profanity filter - prototype v0.6
 
 An independent Android patch that mutes caption-detected profanity and optionally
 masks the matching caption text. It runs locally inside patched YouTube using
@@ -11,6 +11,14 @@ It is not an official Morphe release or ContentAngel's source code.
 
 ## Current verification
 
+Version 0.6 corrects timing rules identified by inspecting the installed
+ContentAngel 1.5.1 parser/planner: next-line bounds for rolling captions,
+unexpanded single-word fallbacks, and character timing within bounded segments.
+It passes **41 synthetic timing cases measured from that implementation**,
+**27 matching/timing checks**, and **25 audio lifecycle checks**. The reference
+fixtures contain synthetic captions and expected times, not extension source.
+Version 0.6 still needs a live phone check; the results below describe v0.5.
+
 Version 0.5 was built and installed on an Android 14 phone. Live testing of
 [ibz's Halloween Americans](https://www.youtube.com/watch?v=8_vTxsB3IYA) loaded
 English automatic captions and detected **20 matches / 18 mute windows**. Three
@@ -19,7 +27,7 @@ native checks. Android's mixer confirmed actual audio muting, not only an
 internal flag. The first-five-seconds diagnostic also worked without displaying
 the player controls. The artificial audio test was off for the normal tests.
 
-The build runs **18 matching/timing checks and 23 host runtime checks**. The
+The previously tested v0.5 build ran 18 matching/timing and 23 host runtime checks. The
 [device test record](tests/device-verification-2026-11-13.json) identifies the
 exact tested source, bundle and APK. This covers one phone and one video, not
 all playback routes or perfect alignment of every spoken word.
@@ -46,7 +54,7 @@ YouTube. Retain its signing key to install later updates.
 ## Use it
 
 Open YouTube Settings > Morphe Settings > Player > Profanity filter. The summary
-should identify **Prototype v0.5**. Enable the filter and select a real caption
+should identify **Prototype v0.6** after installing the updated APK. Enable the filter and select a real caption
 track in the player, such as English (auto-generated). The filter is enabled by
 default in this custom prototype.
 

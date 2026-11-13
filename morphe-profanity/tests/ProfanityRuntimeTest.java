@@ -39,8 +39,8 @@ public final class ProfanityRuntimeTest {
         capture(VideoInformation.video);
         at(1349); volume(.42f, "normal volume before lead-in");
         at(1350); volume(0, "mute at exact start without any control-overlay VideoState");
-        at(1899); volume(0, "mute until the word ends");
-        at(1900); volume(.42f, "restore at exact window end");
+        at(1819); volume(0, "mute until the word ends");
+        at(1820); volume(.42f, "restore at exact word end before trailing space");
         at(1500); volume(0, "backward seek into profanity");
         track.state=2; at(1500); volume(.42f, "paused audio cannot leave filter latched");
         track.state=3; at(1500); volume(0, "resume inside a word remutes");
@@ -79,6 +79,21 @@ public final class ProfanityRuntimeTest {
         String masked=new String(ProfanityFilterPatch.censorCaptionBytes(source), StandardCharsets.UTF_8);
         checks++;
         if (!masked.equals("<p title=\"shit\">****</p>")) throw new AssertionError("mask text, preserve XML attributes");
+        var observerField = ProfanityFilterPatch.class.getDeclaredField("captionObserver");
+        observerField.setAccessible(true);
+        int[] observed = {0};
+        observerField.set(null, (java.util.function.BiConsumer<org.w3c.dom.Document,String>)(document, url) -> {
+            if (!document.getDocumentElement().getTextContent().contains("shit")
+                    || url == null || !url.endsWith(VideoInformation.video)) throw new AssertionError("original caption observation");
+            observed[0]++;
+        });
+        capture(VideoInformation.video);
+        checks++;
+        if (observed[0] != 1) throw new AssertionError("observer must receive original document once");
+        ProfanityFilterPatch.captureCaptionDocument(null);
+        observerField.set(null, null);
+        checks++;
+        if (observed[0] != 1) throw new AssertionError("observer request state must be cleared");
         System.out.println("PASS: " + checks + " runtime lifecycle and volume checks (host doubles, not a device test)");
     }
 }

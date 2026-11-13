@@ -23,11 +23,12 @@ final class ProfanitySchedule {
     private static final int MAX_MATCHES = 20000;
     private static final long MAX_PHRASE_GAP_MS = 3000;
     private static final long MERGE_GAP_MS = 150;
+    private static final Pattern CAPTION_WORD = Pattern.compile("\\[\\s*_+\\s*\\]|\\S+");
 
     record Window(long start, long end) {}
     record Scan(List<Window> windows, int captionCount, int segmentCount, int matchCount) {}
     private record Piece(int charStart, int charEnd, long timeStart, long timeEnd,
-                         boolean approximate) {}
+                         boolean approximate, boolean anchoredWord) {}
 
     private ProfanitySchedule() {}
 
@@ -39,11 +40,31 @@ final class ProfanitySchedule {
     }
 
     private static void append(StringBuilder text, List<Piece> pieces, String part,
-                               long begin, long end, boolean approximate) {
+                               long begin, long end, boolean approximate, boolean anchored) {
         if (part == null || part.isEmpty()) return;
         int from = text.length();
         text.append(part);
-        pieces.add(new Piece(from, text.length(), begin, end, approximate));
+        pieces.add(new Piece(from, text.length(), begin, end, approximate, anchored && singleWord(part)));
+    }
+
+    private static boolean singleWord(String text) {
+        Matcher tokens = CAPTION_WORD.matcher(text);
+        return tokens.find() && !tokens.find();
+    }
+
+    private static long nextLineAfter(long[] starts, long time, long fallback) {
+        int low = 0, high = starts.length;
+        while (low < high) {
+            int mid = (low + high) >>> 1;
+            if (starts[mid] <= time) low = mid + 1;
+            else high = mid;
+        }
+        return low < starts.length ? Math.min(fallback, starts[low]) : fallback;
+    }
+
+    private static long characterTime(Piece p, int character) {
+        double fraction = (double)(character - p.charStart()) / Math.max(1, p.charEnd() - p.charStart());
+        return p.timeStart() + Math.round((p.timeEnd() - p.timeStart()) * fraction);
     }
 
     private static List<Element> segments(Element caption) {
@@ -68,7 +89,8 @@ final class ProfanitySchedule {
 
     /** Estimate the speech location inside an entire subtitle line if word times are absent. */
     private static long approximateStart(Piece p, int character) {
-        if (!p.approximate()) return p.timeStart();
+        if (!p.approximate()) return characterTime(p, character);
+        if (p.anchoredWord()) return p.timeStart();
         long span = Math.max(1, p.timeEnd() - p.timeStart());
         double ratio = (double) (character - p.charStart()) /
                 Math.max(1, p.charEnd() - p.charStart());
@@ -78,13 +100,14 @@ final class ProfanitySchedule {
     }
 
     private static long approximateEnd(Piece p, int character) {
-        if (!p.approximate()) return p.timeEnd();
+        if (!p.approximate()) return characterTime(p, character);
+        if (p.anchoredWord()) return p.timeEnd();
         long span = Math.max(1, p.timeEnd() - p.timeStart());
         double ratio = (double) (character - p.charStart()) /
                 Math.max(1, p.charEnd() - p.charStart());
         long estimate = p.timeStart() + Math.round(span * ratio);
         long margin = Math.max(600, Math.round(span * 0.35));
-        return Math.min(p.timeEnd() + 500, estimate + margin);
+        return Math.min(p.timeEnd(), estimate + margin);
     }
 
     /** Output is strictly sorted, with overlapping or adjacent windows merged. */
@@ -99,6 +122,15 @@ final class ProfanitySchedule {
         if (captions.getLength() > MAX_CAPTIONS) {
             return new Scan(Collections.emptyList(), 0, 0, 0);
         }
+        // Rolling captions remain visible after the next line starts. Their
+        // display duration must not be treated as the last word's speech duration.
+        ArrayList<Long> starts = new ArrayList<>();
+        for (int k = 0; k < captions.getLength(); k++) {
+            if (!(captions.item(k) instanceof Element p) || p.getTextContent().isBlank()) continue;
+            long t = numeric(p, "t", -1), d = numeric(p, "d", -1);
+            if (t >= 0 && d > 0 && d <= 600000 && t <= Long.MAX_VALUE - d) starts.add(t);
+        }
+        long[] lineStarts = starts.stream().mapToLong(Long::longValue).sorted().distinct().toArray();
         StringBuilder fullText = new StringBuilder();
         ArrayList<Piece> pieces = new ArrayList<>();
         int parsedCaptions = 0, parsedSegments = 0;
@@ -114,17 +146,24 @@ final class ProfanitySchedule {
             if (previousEnd >= 0 && fullText.length() > 0) fullText.append(' ');
             previousEnd = end;
             parsedCaptions++;
+            parsedSegments += children.size();
 
-            if (children.isEmpty()) {
-                append(fullText, pieces, paragraph.getTextContent(),
-                        start, end, true);
+            boolean timedChildren = children.stream().anyMatch(e -> e.hasAttribute("t"));
+            if (children.isEmpty() || !timedChildren) {
+                String text = paragraph.getTextContent();
+                long limit = singleWord(text) ? start + Math.min(duration, fallbackDurationMs) : end;
+                append(fullText, pieces, text,
+                        start, nextLineAfter(lineStarts, start, limit), true, true);
             } else {
-                parsedSegments += children.size();
+                long lastOffset = 0;
+                boolean firstWord = true;
                 for (int n = 0; n < children.size(); n++) {
                     Element segment = children.get(n);
                     String segmentText = segment.getTextContent();
-                    long offset = numeric(segment, "t", 0);
+                    long offset = numeric(segment, "t", lastOffset);
                     if (offset < 0 || offset >= duration) continue;
+                    lastOffset = offset;
+                    boolean anchored = segment.hasAttribute("t") || firstWord;
                     long wordStart = start + offset, nextOffset = -1;
                     for (int following = n + 1; following < children.size(); following++) {
                         Element next = children.get(following);
@@ -133,14 +172,15 @@ final class ProfanitySchedule {
                         nextOffset = numeric(next, "t", -1);
                         break;
                     }
-                    boolean nextTimed = nextOffset > offset && nextOffset <= duration;
+                    boolean nextTimed = anchored && nextOffset > offset && nextOffset <= duration;
                     long stop = nextTimed ? start + nextOffset
-                            : Math.min(end, wordStart + fallbackDurationMs);
+                            : nextLineAfter(lineStarts, wordStart,
+                                    wordStart + Math.min(end - wordStart, fallbackDurationMs));
                     stop = Math.max(wordStart + 1, stop);
-                    boolean approximate = !nextTimed
-                            || segmentText.strip().contains(" ")
-                            || segmentText.strip().contains("\n");
-                    append(fullText, pieces, segmentText, wordStart, stop, approximate);
+                    // A following timestamp bounds the segment even if its text
+                    // contains several words. Do not expand it by sentence margins.
+                    append(fullText, pieces, segmentText, wordStart, stop, !nextTimed, anchored);
+                    if (!segmentText.isBlank()) firstWord = false;
                 }
             }
             if (fullText.length() > MAX_TEXT_CHARS) {
