@@ -4,7 +4,35 @@ Reference: [ContentAngel – Profanity Filter & Caption Muter for YouTube](https
 
 This is an **independent implementation** for Morphe Android, not copied extension source. The Chrome extension runs in a browser and can read YouTube's web-page player; the native Android player needs different hooks. **Functional parity is the goal, not a current claim.**
 
-## Implemented in source (end-to-end device reliability not yet proven)
+## Reference check and development priorities (November 13, 2026)
+
+Rechecked the developer's Chrome Web Store description against this matrix. Its
+current listed version is still 1.5.1. The listing describes public behavior;
+this check does not establish how its current internal code implements it.
+
+ContentAngel remains the behavior reference for matching, timing, caption
+masking, channel exceptions, and settings. In particular, its stated use of
+automatic-caption word times **even when uploaded captions are displayed** is
+the key timing behavior to pursue next. Broad sentence-level muting is not the
+target behavior when better timing is available.
+
+Priorities for the next implementation pass:
+
+1. Obtain native automatic-caption word offsets and align them with the chosen
+   displayed caption track, preserving timestamps through parsing.
+2. Validate silence boundaries against those offsets, including the next clean
+   word, rather than accepting a nonzero match count as sufficient proof.
+3. Load captions for filtering without requiring the viewer to display CC,
+   while preserving the viewer's chosen subtitle language and visibility.
+4. Keep matching `[ __ ]`, custom literal/regex phrases, cross-caption phrases,
+   and Always/Never channel behavior consistent with the reference.
+
+Version 0.5 passed the documented native checks for three mute intervals,
+restoration, pause/resume and a channel exception on one Android phone/video.
+Those checks establish working native audio control; they do not establish
+word-level timing parity. See [the device test record](tests/device-verification-2026-11-13.json).
+
+## Implemented in source (broader device reliability still needs validation)
 
 | ContentAngel behavior | Morphe custom patch |
 | --- | --- |
