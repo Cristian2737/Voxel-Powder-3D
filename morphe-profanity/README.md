@@ -22,7 +22,16 @@ The live v0.6 check found the ibz test track supplies 284 whole-line captions an
 **zero word-offset segments**. Rich JSON3/SRV3 requests also returned line-only
 data. Therefore the ContentAngel word-timing reference cases do not establish
 precise timing on that video. Version 0.7 passes 35 rule/timing, 41 reference and
-25 runtime checks; its build and live playback verification are pending.
+25 runtime checks. The corrected build succeeded in
+[Actions run 43451439760](https://github.com/Cristian2737/Voxel-Powder-3D/actions/runs/43451439760)
+and its installed APK hash matches the desktop output. **All 15 native checks
+passed**: three short windows and restoration, pause/resume, seeking, the channel
+exception, and actual Android mixer muting/restoration (502 player samples and
+319 mixer samples). The first three mutes last 450, 493 and 419 milliseconds.
+[The v0.7 test record](tests/device-verification-2026-11-13-v07.json) records the
+source and hashes. This verifies the schedule and audio control; a listening
+check of estimated spoken-word alignment is still pending. Temporary phone-side
+diagnostics were removed and the signed test probe was uninstalled.
 
 Historical v0.6 build verification follows:
 

@@ -11,6 +11,10 @@ sentences and no word offsets. The available rich-format requests retain that
 limitation. Version 0.7 offers shorter character-position estimates for these
 lines, with broader coverage available by switching them off. This is an
 intentional fallback choice and not a claim of ContentAngel word-timing parity.
+On this same native input, ContentAngel's pure planner produced a 3084ms first
+placeholder window; v0.6 produced 2892ms and the v0.7 short estimate 450ms.
+That comparison is not browser playback evidence or proof of spoken alignment.
+The corrected v0.7 APK passed the 15 native checks in its device record.
 
 ## Reference check and development priorities (November 13, 2026)
 

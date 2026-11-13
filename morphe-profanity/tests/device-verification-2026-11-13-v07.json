@@ -1,0 +1,59 @@
+{
+  "prototype": "v0.7",
+  "source_commit": "b5b655f0a5ada76953aef0d2cf61de7197d2f486",
+  "workflow_run": 43451439760,
+  "video": "https://www.youtube.com/watch?v=8_vTxsB3IYA",
+  "apk_sha256": "e7912abf81231e2b46393690dcd349223ab4b9b00ad2b5eca62f6c17c220bb66",
+  "bundle_sha256": "0a1e46d6ded232bbeba0d8e539132ee680d5e985e4cefd025bdea846e4d777a6",
+  "host_checks": 101,
+  "native_checks": {
+    "captions_loaded": true,
+    "self_test_off": true,
+    "short_mode_enabled": true,
+    "window_1_muted": true,
+    "window_1_restored": true,
+    "window_2_muted": true,
+    "window_2_restored": true,
+    "window_3_muted": true,
+    "window_3_restored": true,
+    "pause_releases_filter": true,
+    "channel_exception_releases_filter": true,
+    "no_prolonged_mutes": true,
+    "native_mixer_muted": true,
+    "native_mixer_restored": true,
+    "probe_completed": true
+  },
+  "native_check_count": 15,
+  "native_checks_passed": true,
+  "player_samples": 502,
+  "mixer_samples": 319,
+  "tested_windows_ms": [
+    [
+      94648,
+      95098
+    ],
+    [
+      218765,
+      219258
+    ],
+    [
+      251184,
+      251603
+    ]
+  ],
+  "caption_source": {
+    "language": "en",
+    "kind": "ASR",
+    "captions": 284,
+    "word_offset_segments": 0
+  },
+  "audible_word_alignment_verified": false,
+  "listening_check": "Pending user feedback; no claim of exact spoken-word alignment.",
+  "cleanup": {
+    "installed_apk_sha256": "e7912abf81231e2b46393690dcd349223ab4b9b00ad2b5eca62f6c17c220bb66",
+    "phone_mpp_sha256": "0a1e46d6ded232bbeba0d8e539132ee680d5e985e4cefd025bdea846e4d777a6",
+    "probe_uninstalled": true,
+    "phone_test_files_removed": true
+  },
+  "limits": "Checks native mute schedule and restoration, not audible-word alignment. Sentence timing is estimated; a listening check remains necessary."
+}

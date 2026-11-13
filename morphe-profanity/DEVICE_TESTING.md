@@ -9,9 +9,18 @@ supply missing word timestamps. Check actual profanity and clean adjacent words
 by listening, as well as checking native mute boundaries. Keep the broader
 coverage option available. There are 101 host checks in total.
 
-Version 0.7 is not yet installed or device-tested. Do not infer its success from
-v0.5/v0.6 evidence. Delete signed request URLs, XML and UI dumps from phone after
-copying them to private desktop test artifacts; uninstall the temporary probe.
+Version 0.7 was installed and passed 15 native checks with 502 player and 319
+mixer samples. Its three tested estimated windows were 94648-95098,
+218765-219258 and 251184-251603 ms. All restored promptly; native mixer silence
+and restoration, pause/resume, seeking and Never Censor were checked. The
+self-test was off and temporary settings were restored. This does not establish
+exact audible-word alignment; user listening feedback is still pending. See
+[the v0.7 record](tests/device-verification-2026-11-13-v07.json).
+
+The installed APK hash matched the desktop build. The phone has only the useful
+test app and one current MPP download; the temporary signed probe, captured
+signed URL, caption XML and UI dump were removed. No stock APK or duplicate
+installer was copied to the phone.
 
 ## Version 0.6 timing changes
 
