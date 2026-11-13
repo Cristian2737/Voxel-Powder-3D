@@ -111,7 +111,7 @@ final class ProfanityRules {
         }
         // Longest candidates first for better overlap handling.
         expressions.sort((left, right) -> Integer.compare(right.length(), left.length()));
-        return Pattern.compile("(?iu)(?:" + String.join("|", expressions) + ")");
+        return Pattern.compile("(?iuU)(?:" + String.join("|", expressions) + ")");
     }
 
     static boolean contains(String text, Pattern pattern) {

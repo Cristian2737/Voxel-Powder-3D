@@ -50,7 +50,8 @@ public class Settings {
     public static final Value<Boolean> PROFANITY_FILTER=new Value<>(true),
         PROFANITY_CENSOR_CAPTIONS=new Value<>(true), PROFANITY_DEFAULT_WORDS=new Value<>(true),
         PROFANITY_REVERENT_PHRASES=new Value<>(false), PROFANITY_WORD_BOUNDARY=new Value<>(true),
-        PROFANITY_DIAGNOSTICS=new Value<>(false), PROFANITY_TEST_AUDIO=new Value<>(false);
+        PROFANITY_DIAGNOSTICS=new Value<>(false), PROFANITY_TEST_AUDIO=new Value<>(false),
+        PROFANITY_SHORT_ESTIMATES=new Value<>(true);
     public static final Value<String> PROFANITY_CUSTOM_WORDS=new Value<>(""),
         PROFANITY_CUSTOM_REGEX=new Value<>(""), PROFANITY_MUTE_BUFFER=new Value<>("150"),
         PROFANITY_MUTE_DURATION=new Value<>("1500"), PROFANITY_CENSOR_STYLE=new Value<>("asterisks"),

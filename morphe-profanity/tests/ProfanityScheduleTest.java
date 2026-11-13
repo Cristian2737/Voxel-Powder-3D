@@ -88,6 +88,23 @@ public final class ProfanityScheduleTest {
                 all, 150, 1500);
         check(empty.windows().isEmpty(), "no false positive silence");
 
+        check(ProfanityRules.contains("[\u00a0__\u00a0]", all), "native nonbreaking-space censor token");
+        check(ProfanityRules.contains("[\u202f__\u202f]", all), "narrow nonbreaking-space censor token");
+        var sentence = doc("<p t=\"1000\" d=\"4000\">hello shit clean</p>");
+        var compact = ProfanitySchedule.scan(sentence, all, 150, 1500, true);
+        var broad = ProfanitySchedule.scan(sentence, all, 150, 1500, false);
+        check(compact.windows().get(0).start() == 2350, "short estimate keeps only configured lead-in");
+        check(compact.windows().get(0).end() == 3500, "short estimate ends before following clean text");
+        check(compact.windows().get(0).end()-compact.windows().get(0).start()
+                < broad.windows().get(0).end()-broad.windows().get(0).start(), "short option reduces collateral silence");
+        check(ProfanitySchedule.scan(doc("<p t=\"1000\" d=\"4000\">ordinary clean speech</p>"),
+                all, 150, 1500, true).windows().isEmpty(), "short option does not mute clean captions");
+        var exactDoc = doc("<p t=\"1000\" d=\"4000\"><s t=\"0\">shit </s><s t=\"400\">clean</s></p>");
+        check(ProfanitySchedule.scan(exactDoc,all,150,1500,true).windows().equals(
+                ProfanitySchedule.scan(exactDoc,all,150,1500,false).windows()), "sentence option preserves measured word timings");
+        var unicodeToken=ProfanitySchedule.scan(doc("<p t=\"1000\" d=\"12000\">[\u00a0__\u00a0]</p>"),all,150,500,true);
+        check(unicodeToken.windows().get(0).end()==1500,"native placeholder counted as one word");
+
         System.out.println("PASS: " + checks + " profanity-rule and timing checks");
     }
 }

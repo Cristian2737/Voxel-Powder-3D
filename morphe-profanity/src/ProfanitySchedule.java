@@ -23,7 +23,7 @@ final class ProfanitySchedule {
     private static final int MAX_MATCHES = 20000;
     private static final long MAX_PHRASE_GAP_MS = 3000;
     private static final long MERGE_GAP_MS = 150;
-    private static final Pattern CAPTION_WORD = Pattern.compile("\\[\\s*_+\\s*\\]|\\S+");
+    private static final Pattern CAPTION_WORD = Pattern.compile("\\[\\s*_+\\s*\\]|\\S+", Pattern.UNICODE_CHARACTER_CLASS);
 
     record Window(long start, long end) {}
     record Scan(List<Window> windows, int captionCount, int segmentCount, int matchCount) {}
@@ -88,8 +88,8 @@ final class ProfanitySchedule {
     }
 
     /** Estimate the speech location inside an entire subtitle line if word times are absent. */
-    private static long approximateStart(Piece p, int character) {
-        if (!p.approximate()) return characterTime(p, character);
+    private static long approximateStart(Piece p, int character, boolean shortEstimates) {
+        if (!p.approximate() || (shortEstimates && !p.anchoredWord())) return characterTime(p, character);
         if (p.anchoredWord()) return p.timeStart();
         long span = Math.max(1, p.timeEnd() - p.timeStart());
         double ratio = (double) (character - p.charStart()) /
@@ -99,8 +99,8 @@ final class ProfanitySchedule {
         return Math.max(Math.max(0, p.timeStart() - 500), estimate - margin);
     }
 
-    private static long approximateEnd(Piece p, int character) {
-        if (!p.approximate()) return characterTime(p, character);
+    private static long approximateEnd(Piece p, int character, boolean shortEstimates) {
+        if (!p.approximate() || (shortEstimates && !p.anchoredWord())) return characterTime(p, character);
         if (p.anchoredWord()) return p.timeEnd();
         long span = Math.max(1, p.timeEnd() - p.timeStart());
         double ratio = (double) (character - p.charStart()) /
@@ -112,6 +112,13 @@ final class ProfanitySchedule {
 
     /** Output is strictly sorted, with overlapping or adjacent windows merged. */
     static Scan scan(Document document, Pattern words, long beforeMs, long fallbackDurationMs) {
+        return scan(document, words, beforeMs, fallbackDurationMs, false);
+    }
+
+    /** Short estimates interpolate within a sentence without broad safety margins.
+     * They are not measured speech boundaries and may miss misaligned speech. */
+    static Scan scan(Document document, Pattern words, long beforeMs, long fallbackDurationMs,
+                     boolean shortEstimates) {
         if (document == null || words == null) {
             return new Scan(Collections.emptyList(), 0, 0, 0);
         }
@@ -198,8 +205,8 @@ final class ProfanitySchedule {
             if (first == null || last == null
                     || last.timeStart() < first.timeStart()
                     || last.timeStart() - first.timeEnd() > MAX_PHRASE_GAP_MS) continue;
-            long from = Math.max(0, approximateStart(first, match.start()) - beforeMs);
-            long to = approximateEnd(last, match.end());
+            long from = Math.max(0, approximateStart(first, match.start(), shortEstimates) - beforeMs);
+            long to = approximateEnd(last, match.end(), shortEstimates);
             if (to <= from) to = from + 100;
             if (to - from > 15000) to = from + 15000;
             found.add(new Window(from, to));

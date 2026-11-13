@@ -43,6 +43,7 @@ val profanityFilterPatch = patch(
                     TextPreference("morphe_profanity_custom_words"),
                     TextPreference("morphe_profanity_custom_regex"),
                     SwitchPreference("morphe_profanity_word_boundary", summary = true),
+                    SwitchPreference("morphe_profanity_short_estimates", summary = true),
                     TextPreference("morphe_profanity_mute_buffer"),
                     TextPreference("morphe_profanity_mute_duration"),
                     ListPreference("morphe_profanity_censor_style"),

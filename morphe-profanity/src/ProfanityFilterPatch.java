@@ -197,7 +197,8 @@ public final class ProfanityFilterPatch {
         }
         try {
             ProfanitySchedule.Scan scanned = ProfanitySchedule.scan(
-                    document, rules(), muteBufferMs(), muteDurationMs());
+                    document, rules(), muteBufferMs(), muteDurationMs(),
+                    Settings.PROFANITY_SHORT_ESTIMATES.get());
             List<Window> extracted = new ArrayList<>();
             for (ProfanitySchedule.Window w : scanned.windows()) {
                 extracted.add(new Window(w.start(), w.end()));

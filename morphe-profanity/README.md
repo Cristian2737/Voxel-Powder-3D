@@ -1,4 +1,4 @@
-# Morphe YouTube profanity filter - prototype v0.6
+# Morphe YouTube profanity filter - prototype v0.7
 
 An independent Android patch that mutes caption-detected profanity and optionally
 masks the matching caption text. It runs locally inside patched YouTube using
@@ -10,6 +10,21 @@ repository; it is separate from the Voxel Powder 3D project on the main branch.
 It is not an official Morphe release or ContentAngel's source code.
 
 ## Current verification
+
+Version 0.7 adds **Short mutes for sentence-only captions**, enabled by default.
+It estimates the matched characters within the caption line without the broad
+sentence margin. Turn it off for broader coverage. Restart after changing it.
+This is estimated alignment, not newly measured speech timing: it can miss words
+when a caption line does not align with the audio. Real word-offset timing keeps
+the v0.6 rules. Unicode-space censor tokens are now consistent on desktop/Android.
+
+The live v0.6 check found the ibz test track supplies 284 whole-line captions and
+**zero word-offset segments**. Rich JSON3/SRV3 requests also returned line-only
+data. Therefore the ContentAngel word-timing reference cases do not establish
+precise timing on that video. Version 0.7 passes 35 rule/timing, 41 reference and
+25 runtime checks; its build and live playback verification are pending.
+
+Historical v0.6 build verification follows:
 
 Version 0.6 corrects timing rules identified by inspecting the installed
 ContentAngel 1.5.1 parser/planner: next-line bounds for rolling captions,
@@ -56,7 +71,7 @@ YouTube. Retain its signing key to install later updates.
 ## Use it
 
 Open YouTube Settings > Morphe Settings > Player > Profanity filter. The summary
-should identify **Prototype v0.6** after installing the updated APK. Enable the filter and select a real caption
+should identify **Prototype v0.7** after installing the updated APK. Enable the filter and select a real caption
 track in the player, such as English (auto-generated). The filter is enabled by
 default in this custom prototype.
 

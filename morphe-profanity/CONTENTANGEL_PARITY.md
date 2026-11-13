@@ -4,6 +4,14 @@ Reference: [ContentAngel – Profanity Filter & Caption Muter for YouTube](https
 
 This is an **independent implementation** for Morphe Android, not copied extension source. The Chrome extension runs in a browser and can read YouTube's web-page player; the native Android player needs different hooks. **Functional parity is the goal, not a current claim.**
 
+## Current native timing finding
+
+The captured native English ASR track for the ibz test video provides whole
+sentences and no word offsets. The available rich-format requests retain that
+limitation. Version 0.7 offers shorter character-position estimates for these
+lines, with broader coverage available by switching them off. This is an
+intentional fallback choice and not a claim of ContentAngel word-timing parity.
+
 ## Reference check and development priorities (November 13, 2026)
 
 The installed ContentAngel 1.5.1 package and its shipped source maps were
