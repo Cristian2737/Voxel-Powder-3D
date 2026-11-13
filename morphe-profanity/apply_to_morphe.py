@@ -33,7 +33,7 @@ def install(root: Path) -> None:
     java = root / "extensions/youtube/src/main/java/app/morphe/extension/youtube"
     kotlin = root / "patches/src/main/kotlin/app/morphe/patches/youtube"
 
-    for name in ("ProfanityRules.java", "ProfanitySchedule.java", "ProfanityFilterPatch.java"):
+    for name in ("ProfanityRules.java", "ProfanitySchedule.java", "ProfanityFilterPatch.java", "ProfanityWebCaptions.java"):
         source = HERE / "src" / name
         target = java / "patches" / name
         if target.is_file() and target.read_bytes() != source.read_bytes():
@@ -60,6 +60,7 @@ def install(root: Path) -> None:
     public static final StringSetting PROFANITY_CUSTOM_WORDS = new StringSetting("morphe_profanity_custom_words", "", parent(PROFANITY_FILTER));
     public static final StringSetting PROFANITY_CUSTOM_REGEX = new StringSetting("morphe_profanity_custom_regex", "", parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_WORD_BOUNDARY = new BooleanSetting("morphe_profanity_word_boundary", TRUE, parent(PROFANITY_FILTER));
+    public static final BooleanSetting PROFANITY_WEB_TIMING = new BooleanSetting("morphe_profanity_web_timing", TRUE, parent(PROFANITY_FILTER));
     public static final BooleanSetting PROFANITY_SHORT_ESTIMATES = new BooleanSetting("morphe_profanity_short_estimates", TRUE, parent(PROFANITY_FILTER));
     public static final StringSetting PROFANITY_MUTE_BUFFER = new StringSetting("morphe_profanity_mute_buffer", "150", parent(PROFANITY_FILTER));
     public static final StringSetting PROFANITY_MUTE_DURATION = new StringSetting("morphe_profanity_mute_duration", "1500", parent(PROFANITY_FILTER));
@@ -163,7 +164,7 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_screen_title">Profanity filter</string>
     <string name="morphe_profanity_screen_summary">Mute profanity detected in timed subtitles</string>
     <string name="morphe_profanity_filter_title">Enable profanity filter</string>
-    <string name="morphe_profanity_filter_summary">Prototype v0.7: short sentence estimates; restart after changing settings.</string>
+    <string name="morphe_profanity_filter_summary">Prototype v0.8: fetch word timing on this device; restart after changing settings.</string>
     <string name="morphe_profanity_censor_captions_title">Censor caption text</string>
     <string name="morphe_profanity_censor_captions_summary">Replace matching words with asterisks</string>
     <string name="morphe_profanity_default_words_title">Filter common profanity</string>
@@ -176,6 +177,8 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_custom_regex_summary">Advanced: each expression on a separate line; invalid entries ignored</string>
     <string name="morphe_profanity_word_boundary_title">Match word boundaries</string>
     <string name="morphe_profanity_word_boundary_summary">Avoid partial-word matches for normal words</string>
+    <string name="morphe_profanity_web_timing_title">Fetch word timing on this device</string>
+    <string name="morphe_profanity_web_timing_summary">Request richer captions directly from YouTube, even with CC hidden. No computer or external service. Falls back to loaded captions when unavailable.</string>
     <string name="morphe_profanity_short_estimates_title">Short mutes for sentence-only captions</string>
     <string name="morphe_profanity_short_estimates_summary">Estimate the word position without broad padding. May miss speech when captions are misaligned. Turn off for broader coverage; restart after changing.</string>
     <string name="morphe_profanity_mute_buffer_title">Mute before word (milliseconds)</string>

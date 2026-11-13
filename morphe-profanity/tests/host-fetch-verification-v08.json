@@ -1,0 +1,27 @@
+{
+  "candidate": "v0.8",
+  "verification": "host-only; Android installation and listening pending",
+  "videoId": "8_vTxsB3IYA",
+  "consumerWorkflow": "Android-only; no computer, desktop export, account-cookie transfer, or external service",
+  "liveJavaResult": {
+    "wordOffsets": 3263,
+    "xmlSegments": 3810,
+    "matches": 20,
+    "muteWindows": 20
+  },
+  "hostChecks": {
+    "rulesAndTiming": 35,
+    "contentAngelTimingReference": 41,
+    "runtimeLifecycle": 34,
+    "captionAcquisitionContracts": 47
+  },
+  "deviceVerified": false,
+  "latestDeviceTestedVersion": "v0.7",
+  "sourceSha256": {
+    "ProfanityFilterPatch.java": "22e8fb91cb3ce76f1cd4631e93e68f8b47923c62621226e0b8fd25e71fdf0b12",
+    "ProfanityFilterPatch.kt": "45a9b433b372c5fd0e6111ca07dc77043eb1fc42a8bd433bda0feb5dc52cfd67",
+    "ProfanityRules.java": "f42756d49ecda6fe1bdc0a9e0c16cc66c92503d8da99e462b3e78fc4c6e27e3c",
+    "ProfanitySchedule.java": "fdfd656f03a87707833f110c275b2b5c7f4f1b06f53072da9857e72ad0577bc4",
+    "ProfanityWebCaptions.java": "4840832973d3df19c1b5809ed9432d24ea4a8ec4832234d9127425979dcb29da"
+  }
+}

@@ -1,4 +1,4 @@
-# Morphe YouTube profanity filter - prototype v0.7
+# Morphe YouTube profanity filter - v0.8 candidate
 
 An independent Android patch that mutes caption-detected profanity and optionally
 masks the matching caption text. It runs locally inside patched YouTube using
@@ -11,6 +11,23 @@ It is not an official Morphe release or ContentAngel's source code.
 
 ## Current verification
 
+The v0.8 candidate adds **Fetch word timing on this device**. It requests the
+web caption resource directly from Android using a fresh visitor context and
+the current YouTube player signature timestamp, without displaying CC. No
+computer, desktop export, browser-cookie transfer, or external service is needed
+by this implementation. Word-timed schedules survive later sentence-only loads.
+
+The actual Java fetcher retrieved **3,263 word offsets** on the ibz test video in
+a live host check. It passes 47 acquisition contracts and 34 runtime lifecycle
+checks, alongside the 35 rule/timing and 41 ContentAngel reference cases.
+**Device installation and listening verification are pending:** the phone was
+not connected during this implementation. The experimental latest download is
+still the previously device-tested v0.7 build. A source build creates an Actions
+artifact; publication is held until a deliberate post-verification dispatch.
+See [the request evidence and other-patch comparison](CAPTION_PATCH_RESEARCH.md).
+
+The following records describe the previously tested builds, not v0.8:
+
 Version 0.7 adds **Short mutes for sentence-only captions**, enabled by default.
 It estimates the matched characters within the caption line without the broad
 sentence margin. Turn it off for broader coverage. Restart after changing it.
@@ -19,8 +36,8 @@ when a caption line does not align with the audio. Real word-offset timing keeps
 the v0.6 rules. Unicode-space censor tokens are now consistent on desktop/Android.
 
 The live v0.6 check found the ibz test track supplies 284 whole-line captions and
-**zero word-offset segments**. Rich JSON3/SRV3 requests also returned line-only
-data. Therefore the ContentAngel word-timing reference cases do not establish
+**zero word-offset segments**. Rich JSON3/SRV3 requests of that same native resource also returned line-only
+data. The v0.8 candidate requests a distinct WEB resource, which does have word offsets. Therefore the ContentAngel word-timing reference cases do not establish
 precise timing on that video. Version 0.7 passes 35 rule/timing, 41 reference and
 25 runtime checks. The corrected build succeeded in
 [Actions run 43451439760](https://github.com/Cristian2737/Voxel-Powder-3D/actions/runs/43451439760)

@@ -54,10 +54,19 @@ public final class ProfanityFilterPatch {
     private static String cachedRulesKey;
     private static Pattern cachedRules;
     private static boolean tickScheduled;
+    private static final ProfanityWebCaptions webCaptions = new ProfanityWebCaptions();
+    // Main-thread only. One worker and a bounded cooldown prevent request storms
+    // while swiping through videos or receiving repeated playback-clock callbacks.
+    private static boolean webFetchRunning;
+    private static final Map<String, Long> webAttempts = new LinkedHashMap<>() {
+        @Override protected boolean removeEldestEntry(Map.Entry<String, Long> eldest) {
+            return size() > 8;
+        }
+    };
 
     private record TrackStamp(String video, String vss, String language) {}
     private record Window(long start, long end) {}
-    private record CaptionData(TrackStamp track, List<Window> windows, int matches) {
+    private record CaptionData(TrackStamp track, List<Window> windows, int matches, int wordOffsets) {
         boolean automatic() {
             String vss = track.vss();
             return vss.startsWith("a.") || vss.startsWith("ta.");
@@ -146,11 +155,17 @@ public final class ProfanityFilterPatch {
         Utils.runOnMainThreadNowOrLater(() -> {
             if (next != null && next.equals(selectedTrack)) return;
             selectedTrack = next;
+            if (next != null && !next.language().isEmpty()) {
+                CaptionData existing = captionCache.get(next.video());
+                if (existing != null && !sameLanguage(existing.track().language(), next.language()))
+                    captionCache.remove(next.video());
+            }
             // Native selection and caption parse callbacks can arrive in either order.
             // The schedule is looked up by player video ID, not by caption-track equality.
             PlayerVolumePatch.setProfanityMuted(false);
             updateMute();
             schedule();
+            maybeFetchWordTiming();
         });
     }
 
@@ -164,6 +179,7 @@ public final class ProfanityFilterPatch {
             PlayerVolumePatch.setProfanityMuted(false);
             updateMute();
             schedule();
+            maybeFetchWordTiming();
         });
     }
 
@@ -195,6 +211,10 @@ public final class ProfanityFilterPatch {
                 Logger.printException(() -> "Caption timing observer failed", error);
             }
         }
+        storeCaption(document, stamp, false);
+    }
+
+    private static void storeCaption(Document document, TrackStamp stamp, boolean webResult) {
         try {
             ProfanitySchedule.Scan scanned = ProfanitySchedule.scan(
                     document, rules(), muteBufferMs(), muteDurationMs(),
@@ -205,16 +225,25 @@ public final class ProfanityFilterPatch {
             }
             extracted = Collections.unmodifiableList(extracted);
             final List<Window> compiledWindows = extracted;
+            final int wordOffsets = ProfanityWebCaptions.wordOffsets(document);
             Utils.runOnMainThreadNowOrLater(() -> {
                 if (!isEnabled()) return;
+                if (selectedTrack != null && stamp.video().equals(selectedTrack.video())
+                        && !selectedTrack.language().isEmpty()
+                        && !sameLanguage(stamp.language(), selectedTrack.language())) return;
+                if (webResult && (!Settings.PROFANITY_WEB_TIMING.get()
+                        || !stamp.video().equals(VideoInformation.getVideoId()))) return;
                 // When YouTube happens to provide both tracks, retain the more
                 // accurate automatic caption timing instead of replacing it with
                 // a manual caption transcript or a zero-match preview.
-                CaptionData next = new CaptionData(stamp, compiledWindows, scanned.matchCount());
+                CaptionData next = new CaptionData(stamp, compiledWindows, scanned.matchCount(),
+                        wordOffsets);
                 CaptionData prior = captionCache.get(stamp.video());
                 boolean preferPrior = prior != null && (
-                        prior.automatic() && !next.automatic()
-                        || prior.matches() > 0 && next.matches() == 0);
+                        prior.wordOffsets() > next.wordOffsets()
+                        || prior.wordOffsets() == next.wordOffsets() && (
+                            prior.automatic() && !next.automatic()
+                            || prior.matches() > 0 && next.matches() == 0));
                 if (!preferPrior) captionCache.put(stamp.video(), next);
                 boolean playingVideo = stamp.video().equals(currentVideo)
                         || stamp.video().equals(VideoInformation.getVideoId());
@@ -232,6 +261,43 @@ public final class ProfanityFilterPatch {
         } catch (RuntimeException error) {
             Logger.printException(() -> "Profanity caption timing failed", error);
         }
+    }
+
+    private static boolean sameLanguage(String first, String second) {
+        return first.split("-")[0].equalsIgnoreCase(second.split("-")[0]);
+    }
+
+    /** Acquisition works with CC hidden; all network requests originate on Android. */
+    private static void maybeFetchWordTiming() {
+        if (webFetchRunning || !isEnabled() || !Settings.PROFANITY_WEB_TIMING.get()) return;
+        String video = VideoInformation.getVideoId();
+        if (video == null || !video.matches("[A-Za-z0-9_-]{11}")) return;
+        String language = selectedTrack != null && video.equals(selectedTrack.video())
+                ? selectedTrack.language() : java.util.Locale.getDefault().getLanguage();
+        CaptionData prior = captionCache.get(video);
+        if (prior != null && prior.wordOffsets() > 0
+                && sameLanguage(prior.track().language(), language)) return;
+        String key = video + ":" + language;
+        Long attempted = webAttempts.get(key);
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (attempted != null && now - attempted < 300000) return;
+        webAttempts.put(key, now);
+        webFetchRunning = true;
+        Utils.runOnBackgroundThread(() -> {
+            try {
+                ProfanityWebCaptions.Result result = webCaptions.fetch(video, language);
+                if (result != null) storeCaption(result.document(),
+                        new TrackStamp(video, result.vss(), result.language()), true);
+            }
+            catch (Exception ignored) {
+                // Network errors can include signed URLs. Never put those in logs.
+            }
+            Utils.runOnMainThreadNowOrLater(() -> {
+                webFetchRunning = false;
+                // Follow only the latest video, without queueing skipped videos.
+                if (!video.equals(VideoInformation.getVideoId())) maybeFetchWordTiming();
+            });
+        });
     }
 
     /**
@@ -288,6 +354,7 @@ public final class ProfanityFilterPatch {
     public static void videoTimeChanged(long timeMs) {
         updateMute();
         schedule();
+        maybeFetchWordTiming();
     }
 
     private static void schedule() {

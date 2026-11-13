@@ -94,6 +94,44 @@ public final class ProfanityRuntimeTest {
         observerField.set(null, null);
         checks++;
         if (observed[0] != 1) throw new AssertionError("observer request state must be cleared");
+        // New acquisition is independent of CC selection, bounded, and cannot
+        // apply a completed request to a different foreground video.
+        var background = app.morphe.extension.shared.Utils.background;
+        background.clear();
+        var running = ProfanityFilterPatch.class.getDeclaredField("webFetchRunning");
+        running.setAccessible(true); running.setBoolean(null, false);
+        VideoInformation.video="webcaption1";
+        var parser = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        var rich = parser.parse(new InputSource(new StringReader(
+            "<timedtext><body><p t=\"1000\" d=\"2000\"><s t=\"0\">well </s>"
+            + "<s t=\"500\">shit </s><s t=\"900\">okay</s></p></body></timedtext>")));
+        ProfanityWebCaptions.result = new ProfanityWebCaptions.Result(rich,"en","a.en",3);
+        ProfanityFilterPatch.onVideoId(VideoInformation.video);
+        for (int i=0;i<20;i++) at(1500);
+        checks++; if (background.size()!=1) throw new AssertionError("only one caption acquisition worker");
+        background.remove(0).run();
+        at(1500); volume(0,"web caption acquisition works with CC never selected");
+        ProfanityFilterPatch.setParsedTrack(new Track(VideoInformation.video));
+        ProfanityFilterPatch.captureCaptionDocument(parser.parse(new InputSource(new StringReader(
+            "<timedtext><body><p t=\"8000\" d=\"2000\">shit safe words</p></body></timedtext>"))));
+        at(8100); volume(.42f,"sentence-only native response cannot overwrite richer timing");
+        at(1500); volume(0,"richer schedule retained after native response");
+        checks++; if (!background.isEmpty()) throw new AssertionError("warm timed captions must not refetch");
+        VideoInformation.video="webcaption2";
+        ProfanityFilterPatch.onVideoId(VideoInformation.video);
+        VideoInformation.video="webcaption3";
+        ProfanityFilterPatch.onVideoId(VideoInformation.video);
+        background.remove(0).run();
+        at(1500); volume(.42f,"late web result cannot mute the next video");
+        checks++; if (background.size()!=1) throw new AssertionError("only latest video follows completed fetch");
+        Settings.PROFANITY_WEB_TIMING.save(false);
+        background.remove(0).run();
+        at(1500); volume(.42f,"turning web timing off rejects its in-flight result");
+        Settings.PROFANITY_WEB_TIMING.save(true);
+        Settings.PROFANITY_NEVER_CHANNELS.save("ibz");
+        VideoInformation.video="webcaption4";
+        ProfanityFilterPatch.onVideoId(VideoInformation.video);
+        checks++; if (!background.isEmpty()) throw new AssertionError("whitelisted channel makes no web request");
         System.out.println("PASS: " + checks + " runtime lifecycle and volume checks (host doubles, not a device test)");
     }
 }

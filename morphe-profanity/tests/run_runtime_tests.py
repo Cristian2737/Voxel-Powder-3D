@@ -18,6 +18,7 @@ public class Looper { public static Looper getMainLooper() { return new Looper()
     "android/os/Handler.java": """package android.os;
 public class Handler { public Handler(Looper l) {} public boolean postDelayed(Runnable r, long ms) { return true; } }
 """,
+    "android/os/SystemClock.java": "package android.os; public class SystemClock { public static long elapsedRealtime() { return 1000; } }",
     "android/media/AudioTrack.java": """package android.media;
 public class AudioTrack {
     public static final int PLAYSTATE_PLAYING=3;
@@ -37,6 +38,8 @@ public class Logger {
     "app/morphe/extension/shared/Utils.java": """package app.morphe.extension.shared;
 public class Utils {
     public static void runOnMainThreadNowOrLater(Runnable r) { r.run(); }
+    public static void runOnBackgroundThread(Runnable r) { background.add(r); }
+    public static final java.util.List<Runnable> background=new java.util.ArrayList<>();
     public static void runOnMainThreadDelayed(Runnable r, long ms) {}
     public static void showToastShort(String text) {}
 }
@@ -51,7 +54,7 @@ public class Settings {
         PROFANITY_CENSOR_CAPTIONS=new Value<>(true), PROFANITY_DEFAULT_WORDS=new Value<>(true),
         PROFANITY_REVERENT_PHRASES=new Value<>(false), PROFANITY_WORD_BOUNDARY=new Value<>(true),
         PROFANITY_DIAGNOSTICS=new Value<>(false), PROFANITY_TEST_AUDIO=new Value<>(false),
-        PROFANITY_SHORT_ESTIMATES=new Value<>(true);
+        PROFANITY_SHORT_ESTIMATES=new Value<>(true), PROFANITY_WEB_TIMING=new Value<>(true);
     public static final Value<String> PROFANITY_CUSTOM_WORDS=new Value<>(""),
         PROFANITY_CUSTOM_REGEX=new Value<>(""), PROFANITY_MUTE_BUFFER=new Value<>("150"),
         PROFANITY_MUTE_DURATION=new Value<>("1500"), PROFANITY_CENSOR_STYLE=new Value<>("asterisks"),
@@ -65,6 +68,19 @@ public class VideoInformation {
     public static long getVideoTime() { return time; }
     public static String getChannelId() { return "channel-1"; }
     public static String getChannelName() { return "ibz"; }
+}
+""",
+    "app/morphe/extension/youtube/patches/ProfanityWebCaptions.java": """package app.morphe.extension.youtube.patches;
+import org.w3c.dom.*;
+class ProfanityWebCaptions {
+    record Result(Document document,String language,String vss,int wordOffsets) {}
+    static Result result; static int fetches;
+    Result fetch(String video,String language) { fetches++; return result; }
+    static int wordOffsets(Document doc) {
+        NodeList nodes=doc.getElementsByTagName("s"); int n=0;
+        for(int i=0;i<nodes.getLength();i++) if(((Element)nodes.item(i)).hasAttribute("t")) n++;
+        return n;
+    }
 }
 """,
     "app/morphe/extension/youtube/patches/AutoTranslateCaptionsPatch.java": """package app.morphe.extension.youtube.patches;
