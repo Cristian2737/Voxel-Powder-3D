@@ -1,0 +1,17 @@
+{
+  "run": 43425605334,
+  "source": "28a1c5f50c62001951993aa0a8bc04769e499e9a",
+  "bundle_sha256": "eed705e241322c5f52c8d3e1eb56f0e678420e9c369b0b7ea93e97f481af15ab",
+  "bytes": 16838134,
+  "ci": "success",
+  "host_checks": 93,
+  "device_playback_verified": false,
+  "package": "app.morphe.android.youtube.censor",
+  "apk_sha256": "135957d34cb5ca16459df9f9debc3e77460686ffe0ca904582ac5858db236675",
+  "patch_applied": true,
+  "signature_verified": true,
+  "prototype": "v0.6",
+  "version_resource_verified": true,
+  "signer_sha256": "50b506ceba9f564195c22c129c00ba63ada911caedd3eac65ab9752432b90014",
+  "device_status": "Not installed or tested on phone; user took it during development."
+}

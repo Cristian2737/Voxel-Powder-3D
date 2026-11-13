@@ -17,7 +17,9 @@ unexpanded single-word fallbacks, and character timing within bounded segments.
 It passes **41 synthetic timing cases measured from that implementation**,
 **27 matching/timing checks**, and **25 audio lifecycle checks**. The reference
 fixtures contain synthetic captions and expected times, not extension source.
-Version 0.6 still needs a live phone check; the results below describe v0.5.
+Version 0.6 compiled successfully in [GitHub Actions](https://github.com/Cristian2737/Voxel-Powder-3D/actions/runs/43425605334), and a signed APK was built and verified locally.
+The [v0.6 build record](tests/build-verification-v06.json) identifies its hashes.
+It still needs a live phone check; the results below describe v0.5.
 
 Version 0.5 was built and installed on an Android 14 phone. Live testing of
 [ibz's Halloween Americans](https://www.youtube.com/watch?v=8_vTxsB3IYA) loaded
