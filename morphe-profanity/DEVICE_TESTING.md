@@ -1,0 +1,82 @@
+# Building and testing an Android installation
+
+A downloaded `.mpp` is a patch bundle, not an installed YouTube modification.
+Import it into Morphe Manager, select **Profanity filter**, patch a compatible
+original YouTube APK, and install the resulting APK. Updating the file in
+Downloads does not update an already installed application.
+
+## Reproducible separate test app
+
+Requirements: Python 3.11+, Java 21+, Android SDK build-tools and platform-tools,
+internet access, and a compiled `morphe-profanity-filter.mpp`. Source changes must
+first be compiled into a new bundle using the branch's GitHub Actions workflow.
+
+For example, on Windows PowerShell:
+
+```powershell
+python .\morphe-profanity\build_device_test.py `
+  --bundle 'C:\path\morphe-profanity-filter.mpp' `
+  --java-home 'C:\path\jdk-21' `
+  --sdk "$env:LOCALAPPDATA\Android\Sdk"
+```
+
+The script downloads a pinned Morphe desktop CLI and compatible YouTube
+21.30.216 APK, verifies their SHA-256 hashes, checks the stock APK's Google
+signing certificates, enables the filter and its dependencies, signs a separate
+**YouTube Censor Test** application, and verifies the output. Its package is
+`app.morphe.android.youtube.censor`; the regular YouTube installation is retained.
+The test build currently keeps only `arm64-v8a` native libraries.
+
+To install onto one explicitly selected authorized ADB device, add:
+
+```powershell
+  --install --serial 'YOUR_ADB_SERIAL'
+```
+
+Outputs default to `morphe-profanity/build/device-test/`. Keep the generated
+`morphe-data/morphe.keystore` private and retain it to sign future updates to the
+test application. Keep using the same output directory. A different signing key
+cannot update an existing Android package. Google APKs, device data, and signing
+keys must not be committed to the repository or uploaded as project releases.
+
+`build-verification.json` records successful patch application and APK signature
+verification. Its `device_playback_verified` value deliberately stays `false`:
+a successful build does not establish that real audio was censored.
+
+## Phone checks
+
+1. Open YouTube Censor Test. Go to YouTube Settings > Morphe Settings > Player >
+   Profanity filter. Confirm the prototype version and that the filter is enabled.
+2. Temporarily enable **Test audio muting (first 5 seconds)**. Open a video at
+   0:00. Verify audio is suppressed initially and restored after five seconds.
+   Disable this switch before normal filtering tests.
+3. Enable **Show filter diagnostics** and select English captions on the video.
+   Verify a nonzero match/window count when its captions contain matching words.
+4. Test audio around at least one known matching word. Check ordinary speech
+   before/after it, pause/resume, backward/forward seeking, user mute, and a
+   channel placed in the Never Censor list. Check a clean video for false mutes.
+5. Repeat at increased playback speed and with automatic caption placeholders
+   such as `[ __ ]`. A caption track must actually load; videos without usable
+   captions cannot be filtered by this patch.
+
+Use a quiet playback volume during unattended tests. Keep any temporary Android
+stay-awake setting limited to the requested testing period.
+
+## Findings from November 13, 2026
+
+- The phone's previously installed Morphe YouTube APK contained neither filter
+  code nor filter settings, despite a v0.4 bundle being in Downloads.
+- A separate filter-enabled APK was successfully built, verified and installed.
+- Live v0.4 testing of [ibz's Halloween Americans](https://www.youtube.com/watch?v=8_vTxsB3IYA)
+  loaded English automatic captions and detected **20 matches / 18 windows**.
+  The filter's mute flag activated during the first detected interval.
+- A native runtime probe found the control-overlay `VideoState` could remain
+  `null` while the actual `AudioTrack` was playing. Version 0.5 uses the active
+  audio track instead, avoiding dependence on showing player controls.
+- Independent matching/timing tests and 23 host runtime checks pass. The runtime
+  checks cover precise mute boundaries, pause/resume, seeking, stale/background
+  captions, user mute, ducking, channel overrides, the audio self-test, and XML
+  text masking. They use Android doubles and do not replace phone testing.
+- Updated-bundle compilation and physical v0.5 playback verification are pending.
+  Automatic captions' approximate timing can still produce broad mute windows;
+  this is an experimental patch, not a guarantee that every spoken word is filtered.

@@ -1,5 +1,9 @@
 # Morphe profanity filter prototype
 
+For the current installation status, reproducible APK build, and device-test
+procedure, see [DEVICE_TESTING.md](DEVICE_TESTING.md). Downloading a `.mpp` alone
+does not apply it to an installed YouTube application.
+
 This folder is an **experimental custom patch**, developed separately from the Voxel Powder 3D project. It is intentionally stored only on the separate branch **morphe-profanity-filter-prototype** so the original project's main branch stays unchanged.
 
 ## Intended behavior

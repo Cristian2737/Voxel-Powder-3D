@@ -142,6 +142,17 @@ def install(root: Path) -> None:
         if (profanityMuted == value) return;
         profanityMuted = value;
         applyMultiplier();
+    }
+
+    /** The control-overlay VideoState may stay null until the user opens it. */
+    public static boolean isAudioPlaying() {
+        AudioTrack track = lastAudioTrackRef.get();
+        if (track == null) return false;
+        try {
+            return track.getPlayState() == AudioTrack.PLAYSTATE_PLAYING;
+        } catch (IllegalStateException ignored) {
+            return false;
+        }
     }''')
 
     inject(
@@ -151,7 +162,7 @@ def install(root: Path) -> None:
     <string name="morphe_profanity_screen_title">Profanity filter</string>
     <string name="morphe_profanity_screen_summary">Mute profanity detected in timed subtitles</string>
     <string name="morphe_profanity_filter_title">Enable profanity filter</string>
-    <string name="morphe_profanity_filter_summary">Prototype v0.4: ContentAngel-inspired caption timing; restart after changing settings.</string>
+    <string name="morphe_profanity_filter_summary">Prototype v0.5: native audio playback detection; restart after changing settings.</string>
     <string name="morphe_profanity_censor_captions_title">Censor caption text</string>
     <string name="morphe_profanity_censor_captions_summary">Replace matching words with asterisks</string>
     <string name="morphe_profanity_default_words_title">Filter common profanity</string>

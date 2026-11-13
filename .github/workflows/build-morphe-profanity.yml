@@ -38,10 +38,13 @@ jobs:
             app.morphe.extension.youtube.patches.ProfanityScheduleTest
 
       - name: Fetch Morphe patches source
-        run: git clone --depth 1 https://github.com/MorpheApp/morphe-patches.git morphe-src
+        run: git clone --depth 1 --branch v2.2.0 https://github.com/MorpheApp/morphe-patches.git morphe-src
 
       - name: Apply custom profanity filter
         run: python3 morphe-profanity/apply_to_morphe.py morphe-src
+
+      - name: Check native-audio lifecycle and volume composition
+        run: python3 morphe-profanity/tests/run_runtime_tests.py morphe-src
 
       - name: Build custom Morphe patch bundle
         working-directory: morphe-src

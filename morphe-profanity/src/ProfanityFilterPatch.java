@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.youtube.settings.Settings;
-import app.morphe.extension.youtube.shared.VideoState;
 
 /**
  * Local caption-based profanity filter, independent of stable-caption-block injection.
@@ -272,8 +271,7 @@ public final class ProfanityFilterPatch {
     }
 
     private static void schedule() {
-        if (tickScheduled || !isEnabled()
-                || VideoState.getCurrent() != VideoState.PLAYING) return;
+        if (tickScheduled || !isEnabled() || !PlayerVolumePatch.isAudioPlaying()) return;
         String video = VideoInformation.getVideoId();
         CaptionData current = video == null ? null : captionCache.get(video);
         boolean transcriptForCurrentVideo = current != null && !current.windows().isEmpty();
@@ -289,7 +287,7 @@ public final class ProfanityFilterPatch {
     private static void updateMute() {
         String video = VideoInformation.getVideoId();
         if (!isEnabled()
-                || VideoState.getCurrent() != VideoState.PLAYING
+                || !PlayerVolumePatch.isAudioPlaying()
                 || video == null || video.isEmpty()) {
             PlayerVolumePatch.setProfanityMuted(false);
             return;
