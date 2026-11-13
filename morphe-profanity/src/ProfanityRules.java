@@ -19,7 +19,7 @@ import java.util.regex.PatternSyntaxException;
 final class ProfanityRules {
     // YouTube's own sanitized transcript marker must be caught even if every
     // editable word list is empty. It is not actual spoken text.
-    private static final String ALWAYS_MUTED = "\\[\\s*_{2,}\\s*\\]";
+    private static final String ALWAYS_MUTED = "\\[[\\s\\p{Z}]*_{2,}[\\s\\p{Z}]*\\]";
     private static final String BOUNDARY_LEFT = "(?<![\\p{L}\\p{N}])";
     private static final String BOUNDARY_RIGHT = "(?![\\p{L}\\p{N}])";
 
@@ -111,7 +111,7 @@ final class ProfanityRules {
         }
         // Longest candidates first for better overlap handling.
         expressions.sort((left, right) -> Integer.compare(right.length(), left.length()));
-        return Pattern.compile("(?iuU)(?:" + String.join("|", expressions) + ")");
+        return Pattern.compile("(?iu)(?:" + String.join("|", expressions) + ")");
     }
 
     static boolean contains(String text, Pattern pattern) {

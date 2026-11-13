@@ -9,6 +9,10 @@ on:
       - '.github/workflows/build-morphe-profanity.yml'
   workflow_dispatch:
 
+concurrency:
+  group: morphe-profanity-prototype
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -73,6 +77,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/morphe-profanity-filter-prototype" --jq .object.sha)
+          if [ "$current" != "$GITHUB_SHA" ]; then
+            echo "A newer source commit exists; preserving its release ownership."
+            exit 0
+          fi
           tag=morphe-profanity-latest
           artifact=morphe-src/patches/build/libs/morphe-profanity-filter.mpp
           gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \

@@ -23,7 +23,7 @@ final class ProfanitySchedule {
     private static final int MAX_MATCHES = 20000;
     private static final long MAX_PHRASE_GAP_MS = 3000;
     private static final long MERGE_GAP_MS = 150;
-    private static final Pattern CAPTION_WORD = Pattern.compile("\\[\\s*_+\\s*\\]|\\S+", Pattern.UNICODE_CHARACTER_CLASS);
+    private static final Pattern CAPTION_WORD = Pattern.compile("\\[[\\s\\p{Z}]*_+[\\s\\p{Z}]*\\]|[^\\s\\p{Z}]+");
 
     record Window(long start, long end) {}
     record Scan(List<Window> windows, int captionCount, int segmentCount, int matchCount) {}
