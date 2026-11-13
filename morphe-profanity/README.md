@@ -20,9 +20,15 @@ by this implementation. Word-timed schedules survive later sentence-only loads.
 The actual Java fetcher retrieved **3,263 word offsets** on the ibz test video in
 a live host check. It passes 47 acquisition contracts and 34 runtime lifecycle
 checks, alongside the 35 rule/timing and 41 ContentAngel reference cases.
-**Device installation and listening verification are pending:** the phone was
-not connected during this implementation. The experimental latest download is
-still the previously device-tested v0.7 build. A source build creates an Actions
+The phone reconnected, and the same Java provider retrieved those **3,263 word
+offsets in 3.4 seconds on Android 14**. Its first three windows match the working
+browser reference exactly. [The Android fetch record](tests/android-fetch-verification-v08.json)
+describes this silent test; the temporary diagnostic APK was uninstalled.
+The signed v0.8 APK was then installed and its hash verified. The live player
+loaded the richer schedule, muted the first window, and restored audio. The user
+confirmed: **clean mute, following words audible**. [The playback record](tests/device-verification-v08.json)
+covers that one passage; broader seek/pause/channel/CC-hidden live checks remain.
+The experimental latest download remains v0.7 while broader v0.8 device checks are pending. A source build creates an Actions
 artifact; publication is held until a deliberate post-verification dispatch.
 See [the request evidence and other-patch comparison](CAPTION_PATCH_RESEARCH.md).
 

@@ -5,8 +5,11 @@ fresh visitor and current player timestamp. Its live host test returned 3,263
 word offsets / 3,810 XML segments and 20 match windows. It requires no desktop
 export, external service, or WebView. Rich schedules have priority over later
 sentence-only native responses. CC-hidden acquisition, stale-result rejection,
-request bounds and channel exclusions are host-tested. Android installation and
-audible word-boundary checks remain pending. The v0.7 records below are historical.
+request bounds and channel exclusions are host-tested. A silent Android 14 probe also retrieved
+3,263 offsets in 3.4 seconds; the first three windows match the browser reference.
+The installed full APK also loaded that schedule and muted/restored the first
+window; the user confirmed the profanity was cleanly muted and the following
+words remained audible. Broader live playback checks remain pending. The v0.7 records below are historical.
 See [the existing-patch review](CAPTION_PATCH_RESEARCH.md) for alternatives.
 
 # ContentAngel 1.5.1 behavior reference and parity tracking

@@ -1,0 +1,36 @@
+{
+  "candidate": "v0.8",
+  "sourceCommit": "bfae08a4afa7e82dbcbbf28648b1d32f59a047ae",
+  "buildRun": "https://github.com/Cristian2737/Voxel-Powder-3D/actions/runs/43473011189",
+  "bundleSha256": "14bddb2bcb12fc283ffd533b86088dc672620d5f8b583552c8283938aaec46b0",
+  "device": "moto g play - 2024",
+  "androidVersion": "14",
+  "testMethod": "Own temporary instrumentation APK executing the exact Java provider on Android; no video playback",
+  "videoId": "8_vTxsB3IYA",
+  "result": {
+    "status": "OK",
+    "elapsedMs": 3400,
+    "wordOffsets": 3263,
+    "xmlSegments": 3810,
+    "matches": 20,
+    "muteWindows": 20,
+    "firstWindowsMs": [
+      [
+        94741,
+        95200
+      ],
+      [
+        219182,
+        219652
+      ],
+      [
+        251224,
+        251614
+      ]
+    ]
+  },
+  "temporaryProbeUninstalled": true,
+  "fullPatchPlayerIntegrationVerified": false,
+  "audibleTimingVerified": false,
+  "providerSourceSha256": "4840832973d3df19c1b5809ed9432d24ea4a8ec4832234d9127425979dcb29da"
+}

@@ -1,0 +1,40 @@
+{
+  "candidate": "v0.8",
+  "sourceCommit": "bfae08a4afa7e82dbcbbf28648b1d32f59a047ae",
+  "bundleSha256": "14bddb2bcb12fc283ffd533b86088dc672620d5f8b583552c8283938aaec46b0",
+  "apkSha256": "1bf6b07c8644d0c37f20bc19ef31232030961fd3fe6a6476efd3ca7bc879474a",
+  "checks": {
+    "probe_completed": true,
+    "rich_word_schedule_loaded": true,
+    "first_window_restored": true,
+    "no_latched_mute": true,
+    "self_test_off": true,
+    "user_mute_unchanged": true,
+    "first_window_interior_muted": true
+  },
+  "passed": true,
+  "samples": 216,
+  "muteSamples": 4,
+  "windowTestedMs": [
+    94741,
+    95200
+  ],
+  "fullPatchPlayerIntegrationVerified": true,
+  "audibleTimingVerified": true,
+  "limitations": "One video and one audible word-boundary pass. No AudioFlinger sampling in this pass. Broader seek/pause/channel/CC-hidden live checks pending; prior v0.7 results cannot count as v0.8 checks.",
+  "temporaryRuntimeProbeUninstalled": true,
+  "videoPausedAfterTest": true,
+  "sampling": {
+    "nominalSamplePeriodMs": 100,
+    "filterTickMs": 35,
+    "observedMutedPositionsMs": [
+      94847,
+      94946,
+      95056,
+      95160
+    ],
+    "boundaryCaveat": "The first sample 5 ms into the window was unmuted; the next sample was muted. Tests exclude the 35 ms filter tick around exact boundaries. This does not measure audible onset."
+  },
+  "installedApkHashMatches": true,
+  "userFeedback": "Yes?clean mute, following words audible"
+}

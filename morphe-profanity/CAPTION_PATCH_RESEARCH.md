@@ -19,10 +19,15 @@ logs signed caption URLs. Native caption parsing remains the fallback. Richer
 word timing takes priority over later sentence-only responses. Channel exclusions
 also prevent the new requests. Background results cannot mute a different video.
 
-**This is not Android listening verification.** The phone was absent from ADB
-during this implementation. The last device-tested build remains v0.7. The new
-candidate must be installed and checked with CC on/off, seeking, pause/resume,
-channel exceptions, and listening around the next clean word before publication.
+The phone later reconnected: the same provider retrieved 3,263 offsets in 3.4
+seconds on Android 14, with the first three windows exactly matching the browser
+reference. See [the Android fetch record](tests/android-fetch-verification-v08.json).
+The temporary probe was uninstalled. The full v0.8 test APK was subsequently
+installed and its hash verified. A live pass at 1:30 loaded the richer schedule,
+muted the first window and restored volume; the user confirmed a clean mute with
+the following words audible. See [the playback record](tests/device-verification-v08.json).
+Broader CC on/off, seeking, pause/resume and channel-exception checks remain
+before publication.
 YouTube may return different results for another region, session, or video.
 No available captions means no caption-based filtering; this adds no transcription.
 
