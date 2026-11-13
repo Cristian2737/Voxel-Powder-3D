@@ -1,0 +1,31 @@
+{
+  "video": "https://www.youtube.com/watch?v=8_vTxsB3IYA",
+  "prototype": "v0.5",
+  "checks": {
+    "captions_loaded": true,
+    "self_test_off": true,
+    "first_window_muted": true,
+    "second_window_muted": true,
+    "third_window_muted": true,
+    "paused_filter_released": true,
+    "channel_exception_works": true,
+    "restored_after_windows": true,
+    "native_mixer_muted": true,
+    "native_mixer_restored": true,
+    "probe_completed": true
+  },
+  "player_samples": 557,
+  "mixer_samples": 138,
+  "passed": true,
+  "limitations": "One phone/video; validates native muting and lifecycle, not perfect word-level caption alignment or all playback routes.",
+  "date": "2026-11-13",
+  "source_commit": "97885706d20cece875e6deee8293a97b83649f1b",
+  "workflow_run": 43397861946,
+  "bundle_sha256": "da4d07a9f3570b4ef61dfd454802089d2d52f89ccd0710c17edaa8aaf57c6abf",
+  "apk_sha256": "d6b45c53aacf706032066bf5e180726c8631da9954234d83b96ae4c316f30bba",
+  "device_model": "moto g play - 2024",
+  "android_version": "14",
+  "startup_self_test_works_without_overlay_state": true,
+  "host_rule_timing_checks": 18,
+  "host_runtime_checks": 23
+}

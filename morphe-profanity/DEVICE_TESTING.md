@@ -77,6 +77,13 @@ stay-awake setting limited to the requested testing period.
   checks cover precise mute boundaries, pause/resume, seeking, stale/background
   captions, user mute, ducking, channel overrides, the audio self-test, and XML
   text masking. They use Android doubles and do not replace phone testing.
-- Updated-bundle compilation and physical v0.5 playback verification are pending.
-  Automatic captions' approximate timing can still produce broad mute windows;
-  this is an experimental patch, not a guarantee that every spoken word is filtered.
+- Version 0.5 compiled successfully in GitHub Actions and its installed APK hash
+  matched the desktop output. A native run collected 557 player samples and 138
+  mixer samples. All 11 checks passed: three caption mute intervals, restoration,
+  pause/resume, a channel exception, and actual mixer silence/restoration with the
+  artificial audio test off. Startup self-testing also worked while the control
+  overlay state was still null. Temporary test settings were restored afterward.
+- The [test record](tests/device-verification-2026-11-13.json) identifies the tested
+  source and binaries. Automatic captions' approximate timing can still produce
+  broad mute windows; this is an experimental patch, not a guarantee that every
+  spoken word is filtered.

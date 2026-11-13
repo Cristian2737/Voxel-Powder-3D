@@ -127,11 +127,15 @@ def main():
     verification = {"package": PACKAGE, "apk_sha256": digest(apk), "bundle_sha256": digest(bundle),
                     "patch_applied": True, "signature_verified": True,
                     "device_playback_verified": False}
+    verification_path = output / "build-verification.json"
+    if args.install:
+        verification["installed"] = False
+    verification_path.write_text(json.dumps(verification, indent=2), encoding="utf-8")
     if args.install:
         adb = args.adb or args.sdk / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")
-        run([adb, "-s", args.serial, "install", "--no-streaming", "-r", apk], env=environment)
+        run([adb, "-s", args.serial, "install", "-r", apk], env=environment)
         verification["installed"] = True
-    (output / "build-verification.json").write_text(json.dumps(verification, indent=2), encoding="utf-8")
+        verification_path.write_text(json.dumps(verification, indent=2), encoding="utf-8")
     print("Built and verified:", apk)
     print("Live playback still needs the device checks in DEVICE_TESTING.md.")
 
